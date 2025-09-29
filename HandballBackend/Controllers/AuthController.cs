@@ -11,14 +11,14 @@ namespace HandballBackend.Controllers;
 [Route("/api/[controller]")]
 public class AuthController(IAuthorizationService authorizationService) : ControllerBase {
     public class LoginRequest {
-        public required int UserID { get; set; }
+        public required string UserID { get; set; }
         public required string Password { get; set; }
         public bool LongSession { get; set; } = false;
     }
 
     public class LoginResponse {
         public required string Token { get; set; }
-        public int UserID { get; set; }
+        public required int UserID { get; set; }
         public long Timeout { get; set; }
 
         public int BasePermission { get; set; }
@@ -32,10 +32,14 @@ public class AuthController(IAuthorizationService authorizationService) : Contro
     public ActionResult<LoginResponse> Login(
         [FromBody] LoginRequest loginRequest
     ) {
-        var userId = loginRequest.UserID;
+        var db = new HandballContext();
+        var userString = loginRequest.UserID;
+        var userId = int.TryParse(userString, out var result)
+            ? result
+            : db.People.Single(p => p.Name.ToLower().StartsWith(userString)).Id;
+
         var password = loginRequest.Password;
         var longSession = loginRequest.LongSession;
-        var db = new HandballContext();
         var tournaments = db.Tournaments.ToList();
         var user = PermissionHelper.Login(userId, password, longSession);
         if (user?.SessionToken is null) {

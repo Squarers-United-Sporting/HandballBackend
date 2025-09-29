@@ -4,13 +4,22 @@ namespace HandballBackend.Database.SendableTypes;
 
 public class OfficialData : PersonData {
     public OfficialRole Role { get; set; }
+    public int UmpireProficiency { get; set; }
+    public int ScorerProficiency { get; set; }
 
-    public OfficialData(Official official, Tournament? tournament = null, bool includeStats = false) : base(
+    public OfficialData(Official official, Tournament? tournament = null, bool includeStats = false,
+        bool isAdmin = false) : base(
         official.Person) {
-        Role = tournament == null
-            ? OfficialRole.Umpire
-            : official.TournamentOfficials.FirstOrDefault(to => tournament.Id == to.TournamentId)?.Role ??
-              OfficialRole.Scorer;
+        var to = tournament != null
+            ? official.TournamentOfficials.FirstOrDefault(to => tournament.Id == to.TournamentId)
+            : null;
+
+        Role = to?.Role ?? OfficialRole.Umpire;
+
+        if (isAdmin) {
+            UmpireProficiency = to?.UmpireProficiency ?? official.Proficiency;
+            ScorerProficiency = to?.ScorerProficiency ?? official.Proficiency;
+        }
 
         if (!includeStats) return;
 

@@ -38,7 +38,7 @@ cls
 mkdir .\build\resources
 xcopy .\HandballBackend\resources .\build\resources
 cd .\build
-.\HandballBackend.exe -l false -u -b
+.\HandballBackend.exe -l false -u -b -s
 SET /A EXIT_CODE=%ERRORLEVEL%
 cd ..
 if %EXIT_CODE%==0 goto :EOF

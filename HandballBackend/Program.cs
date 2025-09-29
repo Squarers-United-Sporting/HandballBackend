@@ -3,6 +3,7 @@ using HandballBackend.Arguments;
 using HandballBackend.Authentication;
 using HandballBackend.Converters;
 using HandballBackend.Database.Models;
+using HandballBackend.ErrorTypes;
 using HandballBackend.Utils;
 using Microsoft.AspNetCore.Authentication;
 
@@ -19,6 +20,7 @@ builder.Services.AddControllers().AddJsonOptions(options => {
     options.JsonSerializerOptions.Converters.Add(new EnumConverter<OfficialRole>());
     options.JsonSerializerOptions.Converters.Add(new EnumConverter<GameEventType>());
 });
+builder.Services.AddDbContext<HandballContext>();
 builder.Services.AddSwaggerGen();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpLogging(o => { });
@@ -42,6 +44,12 @@ var app = builder.Build();
 if (Config.LOGGING) {
     app.UseMiddleware<RequestLogger>();
 }
+
+if (Config.SAVE_ERRORS) {
+    // app.UseExceptionHandler();
+    app.UseExceptionLogging();
+}
+
 
 app.UseSwagger();
 app.UseSwaggerUI();

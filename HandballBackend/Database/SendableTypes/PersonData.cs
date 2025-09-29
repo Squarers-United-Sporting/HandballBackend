@@ -77,7 +77,9 @@ public class PersonData {
             ["Serve Return Rate"] = 0.0,
             ["Votes per 100 Games"] = 0.0,
             ["Average Rating"] = 0.0,
-            ["Merits"] = 0.0
+            ["Merits"] = 0.0,
+            ["Nefarious Votes"] = 0.0,
+            ["Nefarious Rate"] = 0.0
         };
         var teamPoints = 0;
         var servedPointsWon = 0;
@@ -140,6 +142,7 @@ public class PersonData {
                     Stats["Games Started Substitute"] += 1;
                     break;
             }
+            Stats["Nefarious Votes"] += pgs.IsEvil ? 1 : 0;
         }
 
         var tournaments = new HashSet<int>();
@@ -185,6 +188,7 @@ public class PersonData {
         Stats["Percentage of Rounds Carded"] =
             Stats["Rounds Carded"] / (Stats["Rounds on Court"] + Stats["Rounds Carded"]);
         Stats["Rounds per Game"] = Stats["Rounds on Court"] / gamesPlayed;
+        Stats["Nefarious Rate"] = Stats["Nefarious Votes"] / gamesPlayed;
         if (admin) {
             Stats["Penalty Points per Game"] = Stats["Penalty Points"] / gamesPlayed;
         } else {

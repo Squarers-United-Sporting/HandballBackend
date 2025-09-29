@@ -29,10 +29,12 @@ public class Official : IHasRelevant<Official> {
 
     public List<Game> Games { get; set; } = [];
 
+    public List<Game> ScoredGames { get; set; } = [];
+
     public List<TournamentOfficial> TournamentOfficials { get; set; } = [];
 
-    public OfficialData ToSendableData(Tournament? tournament = null, bool includeStats = false) {
-        return new OfficialData(this, tournament, includeStats);
+    public OfficialData ToSendableData(Tournament? tournament = null, bool includeStats = false, bool isAdmin = false) {
+        return new OfficialData(this, tournament, includeStats, isAdmin);
     }
 
     public static IQueryable<Official> GetRelevant(IQueryable<Official> query) {

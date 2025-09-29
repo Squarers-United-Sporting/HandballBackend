@@ -67,7 +67,7 @@ SUCCESS() {
     cd ./build || exit 1
     while true; do
             clear
-            ./HandballBackend -l false -u -b
+            ./HandballBackend -l false -u -b -s
             EXIT_CODE=$?
     
             case $EXIT_CODE in

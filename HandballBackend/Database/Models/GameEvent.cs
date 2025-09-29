@@ -24,7 +24,8 @@ public enum GameEventType {
     Protest,
     Resolve,
     Votes,
-    Merit
+    Merit,
+    Replay
 }
 
 [Table("game_events")]

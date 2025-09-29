@@ -1,6 +1,6 @@
 namespace HandballBackend.EndpointHelpers;
 
-public static class ServerManagmentHelper {
+public static class ServerManagementHelper {
     private static Timer _timer;
 
     public static void CheckForUpdates() {
@@ -11,6 +11,10 @@ public static class ServerManagmentHelper {
         if (localHash == newHash) return;
         Console.WriteLine("Updates on master found; restarting ");
         UpdateServer();
+    }
+
+    public static void QuitServer() {
+        Environment.Exit(1);
     }
 
     public static void RestartServer() {
@@ -44,6 +48,6 @@ public static class ServerManagmentHelper {
     }
 
     public static void StartCheckingForUpdates(int frequency = 60 * 60) {
-        _timer = new Timer(_ => Task.Run(() => CheckForUpdates()), null, TimeSpan.Zero, TimeSpan.FromSeconds(frequency));
+        _timer = new Timer(_ => Task.Run(CheckForUpdates), null, TimeSpan.Zero, TimeSpan.FromSeconds(frequency));
     }
 }

@@ -315,6 +315,7 @@ public class EditGamesController : ControllerBase {
     public class EndGameRequest {
         public int Id { get; set; }
         public required List<string> Votes { get; set; }
+        public List<string> NefariousVotes { get; set; } = [];
         public int TeamOneRating { get; set; }
         public int TeamTwoRating { get; set; }
         public string Notes { get; set; } = string.Empty;
@@ -335,6 +336,7 @@ public class EditGamesController : ControllerBase {
         await GameManager.End(
             endGameRequest.Id,
             endGameRequest.Votes,
+            endGameRequest.NefariousVotes,
             endGameRequest.TeamOneRating,
             endGameRequest.TeamTwoRating,
             endGameRequest.Notes,
@@ -379,6 +381,21 @@ public class EditGamesController : ControllerBase {
         }
 
         await GameManager.Resolve(resolveRequest.Id);
+        return NoContent();
+    }
+
+    public class ReplayRequest {
+        public required int Id { get; set; }
+    }
+
+    [HttpPost("replay")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> ReplayForGame([FromBody] ReplayRequest replayRequest) {
+        if (!PermissionHelper.IsUmpire(new HandballContext().Games.First(g => g.GameNumber == replayRequest.Id))) {
+            return Forbid();
+        }
+
+        await GameManager.Replay(replayRequest.Id);
         return NoContent();
     }
 }

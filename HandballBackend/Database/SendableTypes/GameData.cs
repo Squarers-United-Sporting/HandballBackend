@@ -47,6 +47,7 @@ public class AdminGameData {
             .FirstOrDefault();
         Cards = game.Events.Where(a => GameEvent.CardTypes.Contains(a.EventType))
             .Select(a => a.ToSendableData())
+            .OrderBy(ge => ge.Id)
             .ToArray();
         Resolved = game.Resolved;
     }
@@ -119,8 +120,8 @@ public class GameData {
         Protested = game.Protested;
         Ranked = game.Ranked;
         BestPlayer = game.BestPlayer?.ToSendableData();
-        Official = game.Official?.ToSendableData();
-        Scorer = game.Scorer?.ToSendableData();
+        Official = game.Official?.ToSendableData(isAdmin: isAdmin);
+        Scorer = game.Scorer?.ToSendableData(isAdmin: isAdmin);
         FirstTeamIga = game.TeamOneId == game.IgaSideId;
         FirstTeamToServe = game.TeamToServeId == game.TeamOneId;
         SideToServe = game.SideToServe ?? "Left";

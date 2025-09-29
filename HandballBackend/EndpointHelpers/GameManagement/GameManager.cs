@@ -553,6 +553,7 @@ public static class GameManager {
     public static async Task End(
         int gameNumber,
         List<string> bestPlayerOrder,
+        List<string> nefariousPlayers,
         int teamOneRating, int teamTwoRating,
         string notes,
         string? protestReasonTeamOne, string? protestReasonTeamTwo,
@@ -586,6 +587,7 @@ public static class GameManager {
         var votes = 2;
         var task = new List<Task>();
         foreach (var pgs in playersInOrder) {
+            pgs.IsEvil = nefariousPlayers.Contains(pgs.Player.SearchableName);
             pgs.Rating = pgs.TeamId == game.TeamOneId ? teamOneRating : teamTwoRating;
             if (votes <= 0) continue;
             var votesEvent = SetUpGameEvent(game, GameEventType.Votes, true, pgs.PlayerId, details: votes--);
@@ -843,6 +845,18 @@ public static class GameManager {
         var gameEvent = SetUpGameEvent(game, GameEventType.Abandon, null, null);
         await db.AddAsync(gameEvent);
         GameEventSynchroniser.SyncAbandon(game, gameEvent);
+        await db.SaveChangesAsync();
+        BroadcastEvent(gameNumber, gameEvent);
+    }
+
+    public static async Task Replay(int gameNumber) {
+        var db = new HandballContext();
+        var game = await db.Games.Where(g => g.GameNumber == gameNumber).IncludeRelevant().Include(g => g.Events)
+            .FirstAsync();
+        if (!game.Started) throw new InvalidOperationException("The game has not started");
+        if (game.Ended) throw new InvalidOperationException("The game has ended");
+        var gameEvent = SetUpGameEvent(game, GameEventType.Replay, null, null);
+        await db.AddAsync(gameEvent);
         await db.SaveChangesAsync();
         BroadcastEvent(gameNumber, gameEvent);
     }

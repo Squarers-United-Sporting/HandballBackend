@@ -12,6 +12,7 @@ public class GitArgHandler() : AbstractArgumentHandler("u", "update", "Automatic
             }
         }
 
-        ServerManagmentHelper.StartCheckingForUpdates(frequency);
+        Config.CHECKING_GIT = true;
+        ServerManagementHelper.StartCheckingForUpdates(frequency);
     }
 }

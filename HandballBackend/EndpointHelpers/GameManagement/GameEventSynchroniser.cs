@@ -64,6 +64,7 @@ internal static class GameEventSynchroniser {
                 case GameEventType.Notes:
                 case GameEventType.Substitute:
                 case GameEventType.EndTimeout:
+                case GameEventType.Replay:
                     break;
                 default:
                     throw new ArgumentOutOfRangeException();
@@ -116,11 +117,13 @@ internal static class GameEventSynchroniser {
         if (Math.Max(game.TeamOneScore, game.TeamTwoScore) < 5) {
             game.WinningTeamId = Random.Shared.NextSingle() >= 0.5f ? game.TeamOneId : game.TeamTwoId;
         } else if (game.TeamOneScore == game.TeamTwoScore) {
-            var mostRecentPoint = game.Events.Where(ge => ge.EventType == GameEventType.Score).OrderByDescending(gE => gE.Id).First();
+            var mostRecentPoint = game.Events.Where(ge => ge.EventType == GameEventType.Score)
+                .OrderByDescending(gE => gE.Id).First();
             game.WinningTeamId = game.TeamOneId == mostRecentPoint.TeamId ? game.TeamTwoId : game.TeamOneId;
         } else {
             game.WinningTeamId = game.TeamOneScore > game.TeamTwoScore ? game.TeamOneId : game.TeamTwoId;
         }
+
         game.NoteableStatus = game.AdminStatus;
         game.Status = "Official";
         game.Ended = true;
@@ -195,9 +198,36 @@ internal static class GameEventSynchroniser {
         nonServingTeam.Add(null);
         var leftServed = gameEvent.SideServed == "Left";
         var isFirstTeam = gameEvent.TeamId == game.TeamOneId;
+        if (isFirstTeam) {
+            game.TeamOneScore += 1;
+        } else {
+            game.TeamTwoScore += 1;
+        }
+
+        game.TeamToServeId = gameEvent.TeamToServeId;
+        game.PlayerToServeId = gameEvent.PlayerToServeId;
+        game.SideToServe = gameEvent.SideToServe;
+
+
+        foreach (var pgs in playersOnCourt) {
+            if (pgs.CardTimeRemaining == 0) {
+                pgs.RoundsOnCourt += 1;
+            } else {
+                pgs.RoundsCarded += 1;
+                if (pgs.CardTime > 0) {
+                    pgs.CardTimeRemaining -= 1;
+                }
+            }
+        }
+
+        var highScore = Math.Max(game.TeamOneScore, game.TeamTwoScore);
+        if (highScore >= game.ScoreToWin &&
+            (Math.Abs(game.TeamOneScore - game.TeamTwoScore) >= 2 || highScore >= game.ScoreToForceWin)) {
+            game.SomeoneHasWon = true;
+        }
+
         if (player is null) {
-            //EVIL AWFUL EVIL GUARD CLAUSE and dabs
-            goto end;
+            return;
         }
 
         player.PointsScored += 1;
@@ -205,7 +235,7 @@ internal static class GameEventSynchroniser {
             var playerWhoServed = //doing this like this means that it won't give served points to carded players
                 playersOnCourt.Where(pgs => pgs.TeamId == gameEvent.TeamWhoServedId)
                     .OrderByDescending(pgs => pgs.CardTimeRemaining == 0)
-                    .ThenBy(pgs => pgs.PlayerId == gameEvent.PlayerWhoServedId).First();
+                    .ThenByDescending(pgs => pgs.PlayerId == gameEvent.PlayerWhoServedId).First();
             playerWhoServed.ServedPoints += 1;
             if (playerWhoServed.TeamId == gameEvent.TeamId) {
                 playerWhoServed.ServedPointsWon += 1;
@@ -243,35 +273,6 @@ internal static class GameEventSynchroniser {
             if (gameEvent.Notes != "Ace") {
                 receivingPlayer.ServesReturned += 1;
             }
-        }
-
-
-    end:
-        if (isFirstTeam) {
-            game.TeamOneScore += 1;
-        } else {
-            game.TeamTwoScore += 1;
-        }
-
-        game.TeamToServeId = gameEvent.TeamToServeId;
-        game.PlayerToServeId = gameEvent.PlayerToServeId;
-        game.SideToServe = gameEvent.SideToServe;
-
-
-        foreach (var pgs in playersOnCourt) {
-            if (pgs.CardTimeRemaining == 0) {
-                pgs.RoundsOnCourt += 1;
-            } else {
-                pgs.RoundsCarded += 1;
-                if (pgs.CardTime > 0) {
-                    pgs.CardTimeRemaining -= 1;
-                }
-            }
-        }
-
-        var highScore = Math.Max(game.TeamOneScore, game.TeamTwoScore);
-        if (highScore >= game.ScoreToWin && (Math.Abs(game.TeamOneScore - game.TeamTwoScore) >= 2 || highScore >= game.ScoreToForceWin)) {
-            game.SomeoneHasWon = true;
         }
     }
 

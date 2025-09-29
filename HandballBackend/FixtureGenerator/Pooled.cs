@@ -13,15 +13,15 @@ public class Pooled : AbstractFixtureGenerator {
         _tournamentId = tournamentId;
     }
 
-    public override void BeginTournament() {
+    public override async Task BeginTournament() {
         var db = new HandballContext();
-        var tournament = db.Tournaments.Find(_tournamentId)!;
+        var tournament = (await db.Tournaments.FindAsync(_tournamentId))!;
         tournament.IsPooled = true;
 
-        var teams = db.TournamentTeams
+        var teams = (await db.TournamentTeams
             .Where(t => t.TournamentId == _tournamentId)
             .IncludeRelevant()
-            .ToArray().OrderByDescending(t => t.Team.Elo()).ToList();
+            .ToArrayAsync()).OrderByDescending(t => t.Team.Elo()).ToList();
 
         var pool = 0;
         foreach (var team in teams) {
@@ -29,8 +29,8 @@ public class Pooled : AbstractFixtureGenerator {
             pool = 1 - pool;
         }
 
-        db.SaveChanges();
-        base.BeginTournament();
+        await db.SaveChangesAsync();
+        await base.BeginTournament();
     }
 
     public override async Task<bool> EndOfRound() {
@@ -68,11 +68,13 @@ public class Pooled : AbstractFixtureGenerator {
             poolTwo.Insert(1, poolTwo.Last());
             poolTwo.RemoveAt(poolTwo.Count - 1);
         }
+
         for (var i = 0; i < poolOne.Count / 2; i++) {
             var teamOne = poolOne[i];
             var teamTwo = poolOne[poolOne.Count - i - 1];
             GameManager.CreateGame(_tournamentId, teamOne.Id, teamTwo.Id, round: rounds + 1);
         }
+
         for (var i = 0; i < poolTwo.Count / 2; i++) {
             var teamOne = poolTwo[i];
             var teamTwo = poolTwo[poolTwo.Count - i - 1];

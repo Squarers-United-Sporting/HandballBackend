@@ -1,8 +1,8 @@
-using System.Web.WebPages;
 using HandballBackend.Database;
 using HandballBackend.Database.Models;
 using HandballBackend.EndpointHelpers;
 using HandballBackend.EndpointHelpers.GameManagement;
+using HandballBackend.FixtureGenerator;
 using HandballBackend.Utils;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,9 +11,9 @@ namespace HandballBackend;
 internal static class UtilityFunctions {
     public static void init() {
         Config.SECRETS_FOLDER =
-            @"G:\Programming\c#\HandballBackend\HandballBackend\bin\Release\net8.0\win-x64\publish\secrets";
+            @"G:\Programming\c#\HandballBackend\build\secrets";
         Config.RESOURCES_FOLDER =
-            @"G:\Programming\c#\HandballBackend\HandballBackend\bin\Release\net8.0\win-x64\publish\resources";
+            @"G:\Programming\c#\HandballBackend\build\resources";
     }
 
 
@@ -39,7 +39,6 @@ internal static class UtilityFunctions {
             var isRandomAbandonment = Math.Max(game.TeamOneScore, game.TeamTwoScore) < 5 &&
                                       game.Events.Any(gE => gE.EventType == GameEventType.Abandon);
             if (isRandomAbandonment) continue;
-            // Console.WriteLine($"{game.Id} ({game.GameNumber}): Game {game.TeamOne.Name} vs {game.TeamTwo.Name}");
             var playingPlayers = game.Players
                 .Where(pgs =>
                     game.Events.Any(gE => gE.EventType == GameEventType.Forfeit) ||
@@ -98,7 +97,7 @@ internal static class UtilityFunctions {
             GameManager.End(
                 i,
                 game.Players.Select(p => p.Player.SearchableName).ToList(),
-                3, 3,
+                [], 3, 3,
                 "Testing",
                 null,
                 null,
@@ -250,6 +249,88 @@ internal static class UtilityFunctions {
             var theDate = new DateTime(year, 1, 1).AddDays(i);
             var b = theDate.ToString("d.M.yyyy");
             Console.WriteLine($"{b}: {quotes[i % quotes.Length].Quote} - {quotes[i % quotes.Length].Author}");
+        }
+    }
+
+    public static void TestUmpireAssignments() {
+        init();
+        const int tournamentId = 11;
+        const int round = 1;
+        List<Game> courtOneGames;
+        List<Game?> courtTwoGames;
+        List<AbstractFixtureGenerator.OfficialContainer> officials;
+        var db = new HandballContext();
+        var games = db.Games.Where(g => g.TournamentId == tournamentId && g.Round == round)
+            .IncludeRelevant().ToList();
+        courtOneGames = games.Where(g => g.Court == 0).ToList();
+        courtTwoGames = games.Where(g => g.Court == 1).Cast<Game?>().ToList();
+        officials =
+            db.TournamentOfficials
+                .Where(to => to.TournamentId == tournamentId)
+                .Include(to => to.Official.Person)
+                .Include(to => to.Official.Games.Where(g => g.TournamentId == tournamentId && g.Round < round))
+                .Include(to =>
+                    to.Official.ScoredGames.Where(g => g.TournamentId == tournamentId && g.Round < round))
+                .ToList()
+                .Select(to => new AbstractFixtureGenerator.OfficialContainer {
+                    PlayerId = to.Official.PersonId,
+                    OfficialId = to.OfficialId,
+                    GamesUmpired = to.Official.Games.Count(g => g is { TournamentId: tournamentId, Round: < round }),
+                    Name = to.Official.Person.Name,
+                    GamesScored = to.Official.ScoredGames.Count(g => g is { TournamentId: tournamentId, Round: < round }),
+                    UmpireProficiency = to.UmpireProficiency,
+                    ScorerProficiency = to.ScorerProficiency,
+                }).OrderBy(o => o.GamesUmpired).ToList();
+
+
+        while (courtOneGames.Count > courtTwoGames.Count) {
+            courtTwoGames.Add(null);
+        }
+
+        var solution =
+            new List<(AbstractFixtureGenerator.UmpiringSolution, AbstractFixtureGenerator.UmpiringSolution?)>();
+        foreach (var (courtOne, courtTwo) in courtOneGames.Zip(courtTwoGames)) {
+            var courtOneGame = new AbstractFixtureGenerator.UmpiringSolution {
+                GameId = courtOne.Id,
+                CourtId = 0,
+                PlayerIds = courtOne.TeamOne.People.Concat(courtOne.TeamTwo.People).Select(p => p.Id).ToList(),
+            };
+            var courtTwoGame = courtTwo == null
+                ? null
+                : new AbstractFixtureGenerator.UmpiringSolution {
+                    GameId = courtTwo.Id,
+                    CourtId = 1,
+                    PlayerIds = courtTwo.TeamOne.People.Concat(courtTwo.TeamTwo.People).Select(p => p.Id).ToList(),
+                };
+            solution.Add(new(courtOneGame, courtTwoGame));
+        }
+
+        var solutionArray = solution.ToArray();
+        Console.WriteLine("All Umpires:");
+        foreach (var officialList in officials.GroupBy(o => o.UmpireProficiency)) {
+            Console.WriteLine($"Proficiency: {officialList.Key}");
+            Console.WriteLine(
+                $"{string.Join("\n", officialList.Select(o => $"\t{o.Name} ({o.PlayerId}) : {o.GamesUmpired}, {o.GamesScored}"))}");
+        }
+
+        Console.WriteLine("--------------------");
+        Console.WriteLine($"Success: {AbstractFixtureGenerator.TrySolution(solutionArray, officials, force: true)}");
+        Console.WriteLine("--------------------");
+        foreach (var game in solutionArray.SelectMany(g => new[] { g.Item1, g.Item2 })) {
+            if (game == null) continue;
+            Console.WriteLine($"Game {game.GameId} on Court {game.CourtId + 1}");
+            Console.WriteLine($"\tPlayers: {string.Join(", ", game.PlayerIds)}");
+            Console.WriteLine($"\tUmpire: {game.Official?.Name} ({game.Official?.PlayerId})");
+            Console.WriteLine($"\tScorer: {game.Scorer?.Name} ({game.Scorer?.PlayerId})");
+        }
+
+        Console.WriteLine("--------------------");
+        Console.WriteLine("All Umpires:");
+        Console.WriteLine("--------------------");
+        foreach (var officialList in officials.GroupBy(o => o.UmpireProficiency)) {
+            Console.WriteLine($"Proficiency: {officialList.Key}");
+            Console.WriteLine(
+                $"{string.Join("\n", officialList.Select(o => $"\t{o.Name} ({o.PlayerId}) : {o.GamesUmpired}, {o.GamesScored}"))}");
         }
     }
 }

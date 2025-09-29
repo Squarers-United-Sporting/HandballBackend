@@ -41,6 +41,15 @@ public class TournamentOfficial : IHasRelevant<TournamentOfficial> {
     [ForeignKey("OfficialId")]
     public Official Official { get; set; }
 
+    [Required]
+    [Column("umpire_proficiency")]
+    public required int UmpireProficiency { get; set; }
+
+    [Required]
+    [Column("scorer_proficiency")]
+    public required int ScorerProficiency { get; set; }
+
+
     [NotMapped]
     public int GamesUmpired {
         get {

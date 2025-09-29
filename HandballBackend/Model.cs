@@ -21,7 +21,7 @@ public class HandballContext : DbContext {
     public DbSet<TournamentOfficial> TournamentOfficials { get; set; }
     public DbSet<TournamentTeam> TournamentTeams { get; set; }
 
-    public static readonly string ConnectionString = File.ReadAllText(Config.SECRETS_FOLDER + "/DatabaseConnection.txt");
+    public static string ConnectionString => File.ReadAllText(Config.SECRETS_FOLDER + "/DatabaseConnection.txt");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder) {
         base.OnModelCreating(modelBuilder);
@@ -34,7 +34,12 @@ public class HandballContext : DbContext {
         modelBuilder.Entity<Game>()
             .HasOne(g => g.Official)
             .WithMany(o => o.Games)
-            .HasForeignKey(pgs => pgs.OfficialId);
+            .HasForeignKey(g => g.OfficialId);
+
+        modelBuilder.Entity<Game>()
+            .HasOne(g => g.Scorer)
+            .WithMany(o => o.ScoredGames)
+            .HasForeignKey(g => g.ScorerId);
 
         modelBuilder.Entity<PlayerGameStats>()
             .HasOne(pgs => pgs.Opponent)
@@ -87,6 +92,11 @@ public class HandballContext : DbContext {
 
     // The following configures EF to create a Sqlite database file in the
     // special "local" folder for your platform.
-    protected override void OnConfiguring(DbContextOptionsBuilder options)
-        => options.UseNpgsql(ConnectionString);
+    protected override void OnConfiguring(DbContextOptionsBuilder options) {
+        if (Config.USING_POSTGRES) {
+            options.UseNpgsql(ConnectionString);
+        } else {
+            options.UseSqlite(ConnectionString);
+        }
+    }
 }

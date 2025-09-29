@@ -5,10 +5,10 @@ public static class ArgsHandler {
         new WorkingDirectoryArgHandler(),
         new LoggingArgHandler(),
         new PortArgHandler(),
-        new WorkingDirectoryArgHandler(),
         new GitArgHandler(),
         new HelpArgHandler(),
         new BackupArgHandler(),
+        new SaveErrorsHandler()
     ];
 
     public static void Parse(string[] args, WebApplicationBuilder builder) {
