@@ -96,6 +96,7 @@ public class GameData {
 
     public bool BlitzGame { get; private set; }
 
+    public int ReplaysSinceScore { get; private set; }
 
     public GameData(Game game,
         bool includeTournament = false,
@@ -156,6 +157,12 @@ public class GameData {
             .OrderByDescending(gE => gE.Id).FirstOrDefault();
         FirstTeamScoredLast = game.TeamOneId == mostRecentPoint?.TeamId;
         BlitzGame = game.BlitzGame;
+
+        ReplaysSinceScore = game.Events.OrderByDescending(a => a.Id)
+            .Where(a => a.EventType is GameEventType.Replay or GameEventType.Score)
+            .TakeWhile(a => a.EventType != GameEventType.Score)
+            .Count();
+
         if (includeGameEvents) {
             Events = game.Events.Select(a => a.ToSendableData()).OrderBy(gE => gE.Id).ToArray();
         }
