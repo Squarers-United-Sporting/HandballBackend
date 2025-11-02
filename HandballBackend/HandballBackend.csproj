@@ -26,7 +26,4 @@
         <PackageReference Include="Twilio.AspNet.Core" Version="8.1.1"/>
         <PackageReference Include="Twilio.AspNet.Mvc" Version="8.1.1"/>
     </ItemGroup>
-    <ItemGroup>
-        <Folder Include="resources\images\users\"/>
-    </ItemGroup>
 </Project>
