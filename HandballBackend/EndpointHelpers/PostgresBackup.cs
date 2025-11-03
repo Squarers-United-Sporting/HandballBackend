@@ -4,7 +4,7 @@ namespace HandballBackend.EndpointHelpers;
 
 public static class PostgresBackup {
     private static Timer? _timer;
-
+    private static bool Enabled = false;
 
     public static async Task MakeTimestampedBackup(string backupTitle = "auto", bool force = false) {
         if (!await HasDatabaseChanged() && !force) {
@@ -18,6 +18,7 @@ public static class PostgresBackup {
     }
 
     public static async Task MakeBackup(string filename = "latest") {
+        if (!Enabled || !Config.USING_POSTGRES) return;
         var process = new System.Diagnostics.Process();
         var connArgs = ParseConnectionString(HandballContext.ConnectionString);
 
@@ -62,7 +63,7 @@ public static class PostgresBackup {
     }
 
     public static void PeriodicBackups(int backupTime) {
-        //we run this to initialise the _rowCounts dict.
+        Enabled = true;
         _ = Task.Run(() => MakeBackup());
         _timer ??= new Timer(_ => Task.Run(() => MakeBackup()), null, TimeSpan.Zero, TimeSpan.FromHours(backupTime));
     }

@@ -31,6 +31,7 @@ public class PlayersControllerTest {
             Finished = false,
             InFinals = false,
             HasScorer = true,
+            Color = "#FFFFFF",
             TextAlerts = false,
             IsPooled = false,
             Notes = "These are the tournament notes!",

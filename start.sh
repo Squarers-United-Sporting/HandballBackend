@@ -18,6 +18,14 @@ START() {
     git checkout master
     git pull
 
+    cd ./build/resources || exit 1
+    git pull
+    git add .
+    git commit -m "Automatic Commit from Server Restart"
+    git push origin
+    cd ..
+    cd ..
+
     BUILD
 }
 
@@ -63,7 +71,6 @@ ERROR() {
 
 SUCCESS() {
     errors=0
-    cp -rf ./HandballBackend/resources ./build/resources
     cd ./build || exit 1
     while true; do
             clear

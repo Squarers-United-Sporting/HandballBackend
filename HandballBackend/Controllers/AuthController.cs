@@ -36,7 +36,7 @@ public class AuthController(IAuthorizationService authorizationService) : Contro
         var userString = loginRequest.UserID;
         var userId = int.TryParse(userString, out var result)
             ? result
-            : db.People.Single(p => p.Name.ToLower().StartsWith(userString)).Id;
+            : db.People.Single(p => p.Name.ToLower().StartsWith(userString.ToLower())).Id;
 
         var password = loginRequest.Password;
         var longSession = loginRequest.LongSession;
@@ -66,7 +66,6 @@ public class AuthController(IAuthorizationService authorizationService) : Contro
         if (user.PermissionLevel.ToInt() < PermissionType.Admin.ToInt()) {
             foreach (var tournamentOfficial in tournamentOfficials ?? []) {
                 var responsePermission = tournamentOfficial.Role.ToInt();
-                Console.WriteLine(responsePermission);
                 response.Permissions[tournamentOfficial.Tournament.SearchableName] =
                     responsePermission;
             }

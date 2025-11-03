@@ -119,8 +119,8 @@ public class PlayerGameStats {
     public int ServeStreak { get; set; } = 0;
 
     [Required]
-    [Column("is_evil")]
-    public bool IsEvil { get; set; } = false;
+    [Column("demerits")]
+    public int Demerits { get; set; } = 0;
 
     [Column("side_of_court")]
     public string? SideOfCourt { get; set; }
@@ -149,12 +149,11 @@ public class PlayerGameStats {
     [ForeignKey("TournamentId")]
     public Tournament Tournament { get; set; }
 
-    public GamePlayerData ToSendableData(
-        bool includeStats = false,
+    public GamePlayerData ToSendableData(bool includeStats = false,
         bool formatData = false,
-        bool isAdmin = false
-    ) {
-        return new GamePlayerData(this, includeStats, formatData, isAdmin);
+        bool isUmpire = false,
+        bool isAdmin = false) {
+        return new GamePlayerData(this, includeStats, formatData, isUmpire, isAdmin);
     }
 
     public void ResetStats() {
@@ -176,5 +175,6 @@ public class PlayerGameStats {
         CardTimeRemaining = 0;
         BestPlayerVotes = 0;
         Merits = 0;
+        Demerits = 0;
     }
 }

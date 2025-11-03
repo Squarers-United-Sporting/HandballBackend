@@ -8,8 +8,7 @@ namespace HandballBackend.Database.Models;
 
 [Table("games")]
 public class Game : IHasRelevant<Game> {
-    public static readonly string[] ResolvedStatuses =
-    [
+    public static readonly string[] ResolvedStatuses = [
         "Resolved",
         "In Progress",
         "Official",
@@ -178,24 +177,30 @@ public class Game : IHasRelevant<Game> {
     public int LosingTeamId => TeamOneId == WinningTeamId ? TeamTwoId : TeamOneId;
 
     [NotMapped]
+    public Team WinningTeam => TeamOneId == WinningTeamId ? TeamOne : TeamTwo;
+
+    [NotMapped]
+    public Team LosingTeam => TeamOneId == LosingTeamId ? TeamOne : TeamTwo;
+
+    [NotMapped]
     public int ScoreToWin => BlitzGame ? 7 : 11;
 
     [NotMapped]
     public int ScoreToForceWin => 2 * ScoreToWin;
 
-    public GameData ToSendableData(
-        bool includeTournament = false,
+    public GameData ToSendableData(bool includeTournament = false,
         bool includeGameEvents = false,
         bool includeStats = false,
         bool formatData = false,
-        bool isAdmin = false
-    ) {
+        bool isUmpire = false,
+        bool isAdmin = false) {
         return new GameData(
             this,
             includeTournament,
             includeGameEvents,
             includeStats,
             formatData,
+            isUmpire,
             isAdmin
         );
     }

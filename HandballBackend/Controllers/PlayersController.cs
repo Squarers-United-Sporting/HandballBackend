@@ -147,7 +147,8 @@ public class PlayersController() : ControllerBase {
                 .Include(p => p.PlayerGameStats!
                     .Where(pgs => pgs.TournamentId == tournament.Id
                                   && pgs.Team.NonCaptainId != null &&
-                                  pgs.Opponent.NonCaptainId != null
+                                  pgs.Opponent.NonCaptainId != null &&
+                                  (pgs.Game.Ranked || !tournament.Ranked)
                     )
                 )
                 .ThenInclude(pgs => pgs.Game)
@@ -157,7 +158,8 @@ public class PlayersController() : ControllerBase {
             statsList = (await db.People
                     .Include(p => p.PlayerGameStats!
                         .Where(pgs => pgs.Team.NonCaptainId != null &&
-                                      pgs.Opponent.NonCaptainId != null
+                                      pgs.Opponent.NonCaptainId != null &&
+                                      pgs.Game.Ranked
                         )
                     )
                     .ThenInclude(pgs => pgs.Game)

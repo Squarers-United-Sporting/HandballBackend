@@ -96,6 +96,7 @@ public class EditGamesController : ControllerBase {
         public bool? LeftPlayer { get; set; }
         public string? PlayerSearchable { get; set; }
         public string? Method { get; set; }
+        public string[]? Location { get; set; }
     }
 
     [HttpPost("score")]
@@ -107,10 +108,10 @@ public class EditGamesController : ControllerBase {
 
         if (!string.IsNullOrEmpty(scorePointRequest.PlayerSearchable)) {
             await GameManager.ScorePoint(scorePointRequest.Id, scorePointRequest.FirstTeam,
-                scorePointRequest.PlayerSearchable, scorePointRequest.Method);
+                scorePointRequest.PlayerSearchable, scorePointRequest.Method, scorePointRequest.Location);
         } else if (scorePointRequest.LeftPlayer.HasValue) {
             await GameManager.ScorePoint(scorePointRequest.Id, scorePointRequest.FirstTeam,
-                scorePointRequest.LeftPlayer.Value, scorePointRequest.Method);
+                scorePointRequest.LeftPlayer.Value, scorePointRequest.Method, scorePointRequest.Location);
         } else {
             return BadRequest(new MustProvideArgument(nameof(scorePointRequest.LeftPlayer),
                 nameof(scorePointRequest.PlayerSearchable)));
@@ -143,6 +144,35 @@ public class EditGamesController : ControllerBase {
         } else {
             return BadRequest(new MustProvideArgument(nameof(meritRequest.LeftPlayer),
                 nameof(meritRequest.PlayerSearchable)));
+        }
+
+        return NoContent();
+    }
+
+    public class DemeritRequest {
+        public required int Id { get; set; }
+        public required bool FirstTeam { get; set; }
+        public bool? LeftPlayer { get; set; }
+        public string? PlayerSearchable { get; set; }
+        public string? Reason { get; set; }
+    }
+
+    [HttpPost("demerit")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> DemeritForGame([FromBody] DemeritRequest demeritRequest) {
+        if (!PermissionHelper.IsUmpire(new HandballContext().Games.First(g => g.GameNumber == demeritRequest.Id))) {
+            return Forbid();
+        }
+
+        if (!string.IsNullOrEmpty(demeritRequest.PlayerSearchable)) {
+            await GameManager.Demerit(demeritRequest.Id, demeritRequest.FirstTeam,
+                demeritRequest.PlayerSearchable, demeritRequest.Reason);
+        } else if (demeritRequest.LeftPlayer.HasValue) {
+            await GameManager.Demerit(demeritRequest.Id, demeritRequest.FirstTeam,
+                demeritRequest.LeftPlayer.Value, demeritRequest.Reason);
+        } else {
+            return BadRequest(new MustProvideArgument(nameof(demeritRequest.LeftPlayer),
+                nameof(demeritRequest.PlayerSearchable)));
         }
 
         return NoContent();
@@ -184,6 +214,7 @@ public class EditGamesController : ControllerBase {
 
     public class AceRequest {
         public required int Id { get; set; }
+        public required string[]? Location { get; set; }
     }
 
     [HttpPost("ace")]
@@ -193,7 +224,7 @@ public class EditGamesController : ControllerBase {
             return Forbid();
         }
 
-        await GameManager.Ace(aceRequest.Id);
+        await GameManager.Ace(aceRequest.Id, aceRequest.Location);
         return NoContent();
     }
 
@@ -315,7 +346,6 @@ public class EditGamesController : ControllerBase {
     public class EndGameRequest {
         public int Id { get; set; }
         public required List<string> Votes { get; set; }
-        public List<string> NefariousVotes { get; set; } = [];
         public int TeamOneRating { get; set; }
         public int TeamTwoRating { get; set; }
         public string Notes { get; set; } = string.Empty;
@@ -336,7 +366,6 @@ public class EditGamesController : ControllerBase {
         await GameManager.End(
             endGameRequest.Id,
             endGameRequest.Votes,
-            endGameRequest.NefariousVotes,
             endGameRequest.TeamOneRating,
             endGameRequest.TeamTwoRating,
             endGameRequest.Notes,

@@ -6,10 +6,12 @@ namespace HandballBackend.FixtureGenerator;
 
 public class RoundRobin : AbstractFixtureGenerator {
     private readonly int _tournamentId;
+    private readonly bool _blitz;
 
 
-    public RoundRobin(int tournamentId) : base(tournamentId, true, true) {
+    public RoundRobin(int tournamentId, bool blitz = false) : base(tournamentId, true, true) {
         _tournamentId = tournamentId;
+        _blitz = blitz;
     }
 
 
@@ -21,7 +23,8 @@ public class RoundRobin : AbstractFixtureGenerator {
             .Where(g => g.TournamentId == _tournamentId)
             .OrderByDescending(g => g.Round).Select(g => g.Round).FirstOrDefaultAsync();
 
-        var teams = await db.TournamentTeams.Where(t => t.TournamentId == _tournamentId).IncludeRelevant().Select(t => t.Team).ToListAsync();
+        var teams = await db.TournamentTeams.Where(t => t.TournamentId == _tournamentId).IncludeRelevant()
+            .Select(t => t.Team).ToListAsync();
         if (teams.Count <= rounds + 1) {
             // we are now in finals
             tournament.InFinals = true;
@@ -38,7 +41,7 @@ public class RoundRobin : AbstractFixtureGenerator {
         for (var i = 0; i < teams.Count / 2; i++) {
             var teamOne = teams[i];
             var teamTwo = teams[teams.Count - i - 1];
-            await GameManager.CreateGame(_tournamentId, teamOne.Id, teamTwo.Id, round: rounds + 1);
+            await GameManager.CreateGame(_tournamentId, teamOne.Id, teamTwo.Id, blitzGame: _blitz, round: rounds + 1);
         }
 
         await db.SaveChangesAsync();

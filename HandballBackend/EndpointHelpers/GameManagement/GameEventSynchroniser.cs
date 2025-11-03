@@ -47,7 +47,7 @@ internal static class GameEventSynchroniser {
                     game.Protested = true;
                     break;
                 case GameEventType.Resolve:
-                    game.Resolved = true;
+                    SyncResolve(game, gameEvent);
                     break;
                 case GameEventType.EndGame:
                     SyncGameEnd(game, gameEvent);
@@ -60,6 +60,9 @@ internal static class GameEventSynchroniser {
                     break;
                 case GameEventType.Merit:
                     SyncMerit(game, gameEvent);
+                    break;
+                case GameEventType.Demerit:
+                    SyncDemerit(game, gameEvent);
                     break;
                 case GameEventType.Notes:
                 case GameEventType.Substitute:
@@ -75,6 +78,11 @@ internal static class GameEventSynchroniser {
         foreach (var pgs in game.Players) {
             if (lastEvent == null) {
                 pgs.SideOfCourt = pgs.StartSide;
+            } else if (
+                (pgs.TeamId == game.TeamOneId && lastEvent.TeamOneLeftId == lastEvent.TeamOneRightId) ||
+                (pgs.TeamId == game.TeamTwoId && lastEvent.TeamTwoLeftId == lastEvent.TeamTwoRightId)
+            ) {
+                pgs.SideOfCourt = lastEvent.SideToServe;
             } else if (pgs.PlayerId == lastEvent.TeamTwoLeftId || pgs.PlayerId == lastEvent.TeamOneLeftId) {
                 pgs.SideOfCourt = "Left";
             } else if (pgs.PlayerId == lastEvent.TeamTwoRightId || pgs.PlayerId == lastEvent.TeamOneRightId) {
@@ -89,6 +97,11 @@ internal static class GameEventSynchroniser {
             game.SideToServe = lastEvent.SideToServe;
             game.PlayerToServeId = lastEvent.PlayerToServeId;
         }
+    }
+
+    public static void SyncResolve(Game game, GameEvent gameEvent) {
+        game.Resolved = true;
+        game.AdminStatus = "Resolved";
     }
 
     public static void SyncGameEnd(Game game, GameEvent gameEvent) {
@@ -134,6 +147,12 @@ internal static class GameEventSynchroniser {
         var player = game.Players.FirstOrDefault(p => p.PlayerId == gameEvent.PlayerId)!;
         player.Merits++;
     }
+
+    public static void SyncDemerit(Game game, GameEvent gameEvent) {
+        var player = game.Players.FirstOrDefault(p => p.PlayerId == gameEvent.PlayerId)!;
+        player.Demerits++;
+    }
+
     public static void SyncCard(Game game, GameEvent gameEvent) {
         var player = game.Players.FirstOrDefault(p => p.PlayerId == gameEvent.PlayerId)!;
         switch (gameEvent.EventType) {
@@ -193,7 +212,7 @@ internal static class GameEventSynchroniser {
 
         var nonServingTeam = playersOnCourt.Where(pgs => gameEvent.TeamWhoServedId != pgs.TeamId).OrderBy(pgs =>
                 pgs.PlayerId != gameEvent.TeamOneLeftId && pgs.PlayerId != gameEvent.TeamTwoLeftId)
-            .Select(PlayerGameStats? (pgs) => pgs)
+            .Cast<PlayerGameStats?>()
             .ToList(); //force the team into LTR order
         nonServingTeam.Add(null);
         var leftServed = gameEvent.SideServed == "Left";
@@ -268,7 +287,7 @@ internal static class GameEventSynchroniser {
             receivingPlayer = nonServingTeam.FirstOrDefault(pgs => (pgs?.CardTimeRemaining ?? 1) == 0);
         }
 
-        if (receivingPlayer != null && gameEvent.Notes != "Penalty") {
+        if (receivingPlayer != null && gameEvent.PlayerId != null) {
             receivingPlayer.ServesReceived += 1;
             if (gameEvent.Notes != "Ace") {
                 receivingPlayer.ServesReturned += 1;

@@ -14,7 +14,7 @@ public static partial class Utilities {
         return (int) DateTimeOffset.UtcNow.ToUnixTimeSeconds();
     }
 
-    public static string FixImageUrl(string? urlIn) {
+    public static string FixHandballUrl(string? urlIn) {
         if (urlIn is null) {
             return Config.MY_ADDRESS + "/api/image?name=blank";
         }

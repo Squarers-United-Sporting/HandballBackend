@@ -9,6 +9,11 @@ if "%current_branch%"=="" echo Not a git branch! && goto :ERROR
 git stash
 git checkout master
 git pull
+cd .\build.\resources
+git pull
+git add .
+git commit -m "Automatic Commit from Server Restart"
+git push origin
 :BUILD
 dotnet clean .\HandballBackend\HandballBackend.csproj -c Release
 if %ERRORLEVEL% neq 0 goto :ERROR

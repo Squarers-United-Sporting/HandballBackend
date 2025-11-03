@@ -10,6 +10,7 @@ using static System.Enum;
 namespace HandballBackend;
 
 public class HandballContext : DbContext {
+    public DbSet<Document> Documents { get; set; }
     public DbSet<Game> Games { get; set; }
     public DbSet<GameEvent> GameEvents { get; set; }
     public DbSet<Official> Officials { get; set; }
@@ -51,6 +52,12 @@ public class HandballContext : DbContext {
             .HasConversion(
                 v => Utilities.SplitCamelCase(v.ToString()),
                 v => Parse<GameEventType>(v.Replace(" ", "")));
+        modelBuilder
+            .Entity<Document>()
+            .Property(e => e.Type)
+            .HasConversion(
+                v => Utilities.SplitCamelCase(v.ToString()),
+                v => Parse<Document.DocumentType>(v.Replace(" ", "")));
         modelBuilder
             .Entity<TournamentOfficial>()
             .Property(e => e.Role)

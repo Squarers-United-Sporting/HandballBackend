@@ -4,6 +4,7 @@ using HandballBackend.Database.Models;
 using HandballBackend.Database.SendableTypes;
 using HandballBackend.EndpointHelpers;
 using HandballBackend.ErrorTypes;
+using HandballBackend.FixtureGenerator;
 using HandballBackend.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -60,7 +61,7 @@ public class TournamentsController : ControllerBase {
             return NotFound("Invalid Tournament");
         }
 
-        tournament.BeginTournament();
+        await tournament.BeginTournament();
         return Ok();
     }
 
@@ -81,8 +82,12 @@ public class TournamentsController : ControllerBase {
 
     public class CreateTournamentRequest {
         public required string Name { get; set; }
+        public required string Color { get; set; }
         public required string FixturesType { get; set; }
         public required string FinalsType { get; set; }
+
+        public bool HasScorer { get; set; } = true;
+        public bool TwoCourts { get; set; } = true;
     }
 
     public class CreateTournamentResponse {
@@ -100,9 +105,11 @@ public class TournamentsController : ControllerBase {
             FixturesType = request.FixturesType,
             FinalsType = request.FinalsType,
             Ranked = true,
-            TwoCourts = true,
+            TwoCourts = request.TwoCourts,
+            HasScorer = request.HasScorer,
             Started = false,
-            ImageUrl = "/api/image?name=blank"
+            ImageUrl = "/api/image?name=SUSS",
+            Color = request.Color,
         };
         await db.Tournaments.AddAsync(tournament);
         await db.SaveChangesAsync();
@@ -112,10 +119,13 @@ public class TournamentsController : ControllerBase {
     }
 
     public class UpdateTournamentRequest {
-        public required string SearchableName { get; set; }
+        public required string Tournament { get; set; }
         public string? Name { get; set; }
         public string? FixturesType { get; set; }
         public string? FinalsType { get; set; }
+        public string? Color { get; set; }
+        public bool? HasScorer { get; set; }
+        public bool? TwoCourts { get; set; }
     }
 
 
@@ -124,24 +134,48 @@ public class TournamentsController : ControllerBase {
     public async Task<ActionResult> UpdateTournament([FromBody] UpdateTournamentRequest request) {
         var db = new HandballContext();
 
-        if (!Utilities.TournamentOrElse(db, request.SearchableName, out var tournament)) {
-            return NotFound(new InvalidTournament($"The Tournament {request.SearchableName} does not exist"));
+        if (!Utilities.TournamentOrElse(db, request.Tournament, out var tournament)) {
+            return NotFound(new InvalidTournament($"The Tournament {request.Tournament} does not exist"));
         }
 
         if (request.Name != null) {
-            tournament.Name = request.Name;
+            tournament!.Name = request.Name;
         }
 
         if (request.FixturesType != null) {
-            tournament.FixturesType = request.FixturesType;
+            tournament!.FixturesType = request.FixturesType;
         }
 
         if (request.FinalsType != null) {
-            tournament.FinalsType = request.FinalsType;
+            tournament!.FinalsType = request.FinalsType;
+        }
+
+        if (request.Color != null) {
+            tournament!.Color = request.Color;
+        }
+
+        if (request.HasScorer != null) {
+            tournament!.HasScorer = request.HasScorer.Value;
+        }
+        if (request.TwoCourts != null) {
+            tournament!.TwoCourts = request.TwoCourts.Value;
         }
 
         await db.SaveChangesAsync();
 
         return Ok();
+    }
+
+    public class FixtureTypesResponse {
+        public List<string> FixturesTypes { get; set; } = [];
+        public List<string> FinalsTypes { get; set; } = [];
+    }
+
+    [HttpGet("fixtureTypes")]
+    public ActionResult<FixtureTypesResponse> GetFixtureTypes() {
+        return new FixtureTypesResponse {
+            FixturesTypes = AbstractFixtureGenerator.GetFixtureGeneratorNames(),
+            FinalsTypes = AbstractFixtureGenerator.GetFinalsGeneratorNames()
+        };
     }
 }

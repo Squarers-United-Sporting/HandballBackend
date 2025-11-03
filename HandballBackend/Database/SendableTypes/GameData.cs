@@ -96,19 +96,19 @@ public class GameData {
 
     public bool BlitzGame { get; private set; }
 
+    public int ReplaysSinceScore { get; private set; }
 
-    public GameData(
-        Game game,
+    public GameData(Game game,
         bool includeTournament = false,
         bool includeGameEvents = false,
         bool includeStats = false,
         bool formatData = false,
-        bool isAdmin = false
-    ) {
+        bool isUmpire = false,
+        bool isAdmin = false) {
         Id = game.GameNumber;
         Tournament = includeTournament ? game.Tournament.ToSendableData() : null;
-        TeamOne = game.TeamOne.ToGameSendableData(game, includeStats, formatData, isAdmin);
-        TeamTwo = game.TeamTwo.ToGameSendableData(game, includeStats, formatData, isAdmin);
+        TeamOne = game.TeamOne.ToGameSendableData(game, includeStats, formatData, isUmpire, isAdmin);
+        TeamTwo = game.TeamTwo.ToGameSendableData(game, includeStats, formatData, isUmpire, isAdmin);
         TeamOneScore = game.TeamOneScore;
         TeamTwoScore = game.TeamTwoScore;
         TeamOneTimeouts = game.TeamOneTimeouts;
@@ -157,6 +157,12 @@ public class GameData {
             .OrderByDescending(gE => gE.Id).FirstOrDefault();
         FirstTeamScoredLast = game.TeamOneId == mostRecentPoint?.TeamId;
         BlitzGame = game.BlitzGame;
+
+        ReplaysSinceScore = game.Events.OrderByDescending(a => a.Id)
+            .Where(a => a.EventType is GameEventType.Replay or GameEventType.Score)
+            .TakeWhile(a => a.EventType != GameEventType.Score)
+            .Count();
+
         if (includeGameEvents) {
             Events = game.Events.Select(a => a.ToSendableData()).OrderBy(gE => gE.Id).ToArray();
         }

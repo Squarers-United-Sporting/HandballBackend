@@ -78,6 +78,10 @@ public class Tournament {
     [Column("started")]
     public required bool Started { get; set; }
 
+    [Required]
+    [Column("color")]
+    public required string Color { get; set; }
+
     public async Task EndRound() {
         var finals = InFinals;
         if (!finals) {
@@ -89,8 +93,11 @@ public class Tournament {
         }
     }
 
-    public void BeginTournament() {
-        GetFixtureGenerator.BeginTournament();
+    public async Task BeginTournament() {
+        var db = new HandballContext();
+        (await db.Tournaments.FindAsync(Id))!.Started = true;
+        await db.SaveChangesAsync();
+        await GetFixtureGenerator.BeginTournament();
     }
 
     [NotMapped]
@@ -100,6 +107,7 @@ public class Tournament {
     [NotMapped]
     public AbstractFixtureGenerator GetFixtureGenerator =>
         AbstractFixtureGenerator.GetControllerByName(FixturesType, Id);
+
 
     public IQueryable<Person> GetPeopleInTournament() {
         var db = new HandballContext();

@@ -42,7 +42,7 @@ public class GamesController() : ControllerBase {
         [FromQuery] bool formatData = false
     ) {
         var db = new HandballContext();
-        var isAdmin = HttpContext.User.IsInRole(PermissionType.UmpireManager.ToString());
+        var isAdmin = HttpContext.User.IsInRole(nameof(PermissionType.UmpireManager));
 
         var game = db.Games
             .IncludeRelevant()
@@ -54,6 +54,7 @@ public class GamesController() : ControllerBase {
             return NotFound(new DoesNotExist("Game", gameNumber.ToString()));
         }
 
+        var isUmpire = PermissionHelper.IsUmpire(game);
         var cards = db.GameEvents.Where(gE =>
             gE.TournamentId == game.TournamentId
             && GameEvent.CardTypes.Contains(gE.EventType)
@@ -63,7 +64,7 @@ public class GamesController() : ControllerBase {
         }
 
         return new GetGameResponse {
-            Game = game.ToSendableData(true, includeGameEvents, includeStats, formatData, isAdmin)
+            Game = game.ToSendableData(true, includeGameEvents, includeStats, formatData, isUmpire, isAdmin)
         };
     }
 
@@ -147,7 +148,7 @@ public class GamesController() : ControllerBase {
         }
 
         var games = await query.OrderBy(g => g.Id)
-            .Select(g => g.ToSendableData(false, includeGameEvents, includeStats, formatData, isAdmin))
+            .Select(g => g.ToSendableData(false, includeGameEvents, includeStats, formatData, isAdmin, isAdmin))
             .ToArrayAsync();
 
         if (returnTournament && tournament is null) {
@@ -198,7 +199,8 @@ public class GamesController() : ControllerBase {
         query = query.Include(g => g.Events);
 
 
-        var games = await query.Select(g => g.ToSendableData(false, includeGameEvents, includeStats, formatData, true))
+        var games = await query
+            .Select(g => g.ToSendableData(false, includeGameEvents, includeStats, formatData, true, true))
             .ToArrayAsync();
 
         if (returnTournament && tournament is null) {
@@ -234,12 +236,15 @@ public class GamesController() : ControllerBase {
         var isAdmin = PermissionHelper.IsUmpireManager(tournament);
 
 
-        var query = db.Games.Where(g => g.GameNumber > -2 && g.TournamentId == tournament!.Id).IncludeRelevant().OrderBy(g => g.Round);
+        var query = db.Games.Where(g => g.GameNumber > -2 && g.TournamentId == tournament!.Id).IncludeRelevant()
+            .OrderBy(g => g.Round);
 
         query = query.OrderBy(g => g.Id);
 
 
-        var games = await query.Select(g => g.ToSendableData(false, false, false, false, isAdmin)).ToArrayAsync();
+        var isUmpire = PermissionHelper.IsUmpireManager(tournament);
+        var games = await query.Select(g => g.ToSendableData(false, false, false, false, isUmpire, isAdmin))
+            .ToArrayAsync();
 
         List<FixturesRound> fixtures = [];
 

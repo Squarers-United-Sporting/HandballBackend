@@ -25,6 +25,7 @@ public enum GameEventType {
     Resolve,
     Votes,
     Merit,
+    Demerit,
     Replay
 }
 

@@ -24,6 +24,6 @@ public static class ExceptionLoggingHelper {
         Console.WriteLine(bodyText);
         var json = JsonConvert.DeserializeObject<ProblemDetails>(bodyText);
         await File.AppendAllTextAsync(Path,
-            $"[{DateTime.Now} - {httpContext.Request.Path}] {json?.Title ?? "Generic Error"} - {json?.Detail ?? ""}\n");
+            $"[{DateTime.Now} - {httpContext.Request.Path}] {json?.Title ?? $"{httpContext.Response.StatusCode} Error"} - {json?.Detail ?? ""}\n");
     }
 }

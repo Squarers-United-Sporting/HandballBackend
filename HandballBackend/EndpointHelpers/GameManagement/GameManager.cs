@@ -68,12 +68,20 @@ public static class GameManager {
 
     private static async Task<GameEvent> AddPointToGame(HandballContext db, int gameNumber, bool firstTeam,
         int? playerId,
-        bool penalty = false, string? notes = null) {
+        string? notes = null, (int, int)? location = null) {
         var game = await db.Games.IncludeRelevant().Include(g => g.Events)
             .SingleOrDefaultAsync(g => g.GameNumber == gameNumber);
         var teamId = firstTeam ? game.TeamOneId : game.TeamTwoId;
         var prevEvent = game.Events.OrderByDescending(gE => gE.Id).FirstOrDefault()!;
-        var newEvent = SetUpGameEvent(game, GameEventType.Score, firstTeam, playerId, penalty ? "Penalty" : notes);
+        var details = 0;
+        if (location != null) {
+            //this is a rubbish way of doing this, but I do not want to add another field to the db (yet at least)
+            var (x, y) = location.Value;
+            details = 10 * x + y;
+        }
+
+        var newEvent = SetUpGameEvent(game, GameEventType.Score, firstTeam, playerId, notes,
+            details: details);
         newEvent.TeamToServeId = teamId;
         if (teamId == prevEvent.TeamToServeId) {
             //We won this point and the last point
@@ -108,11 +116,22 @@ public static class GameManager {
             var teamPlayers = game.Players!.Where(pgs => pgs.TeamId == teamId).ToList();
             if (teamPlayers.Count == 1) {
                 newEvent.PlayerToServeId = teamPlayers[0].PlayerId;
+                teamPlayers[0].SideOfCourt = newEvent.SideToServe;
             } else {
                 newEvent.PlayerToServeId = teamPlayers
                     .First(pgs => pgs.SideOfCourt == newEvent.SideToServe).PlayerId;
             }
         }
+
+        var opponent = firstTeam ? game.TeamTwo : game.TeamOne;
+
+
+        if (opponent.NonCaptainId == null) {
+            var pgs = game.Players.Where(pgs => pgs.TeamId != teamId).First();
+            //If we are , we need to be on the same side as the server
+            pgs.SideOfCourt = newEvent.SideToServe;
+        }
+
 
         await db.AddAsync(newEvent);
         GameEventSynchroniser.SyncScorePoint(game, newEvent);
@@ -240,7 +259,67 @@ public static class GameManager {
         BroadcastEvent(gameNumber, e);
     }
 
-    public static async Task ScorePoint(int gameNumber, bool firstTeam, bool leftPlayer, string? scoreMethod) {
+    public static async Task Demerit(int gameNumber, bool firstTeam, bool leftPlayer, string? reason) {
+        var db = new HandballContext();
+        var game = await db.Games.IncludeRelevant().Include(g => g.Events).FirstAsync(g => g.GameNumber == gameNumber);
+        if (!game.Started) throw new InvalidOperationException("The game has not started");
+        if (game.Ended) throw new InvalidOperationException("The game has ended");
+
+        int? player;
+        var gameEvent = game.Events.OrderBy(gE => gE.Id).FirstOrDefault()!;
+        if (firstTeam) {
+            player = leftPlayer ? gameEvent.TeamOneLeftId : gameEvent.TeamOneRightId;
+        } else {
+            player = leftPlayer ? gameEvent.TeamTwoLeftId : gameEvent.TeamTwoRightId;
+        }
+
+        var e = SetUpGameEvent(game, GameEventType.Demerit, firstTeam, player, notes: reason);
+        await db.AddAsync(e);
+        GameEventSynchroniser.SyncMerit(game, e);
+        await db.SaveChangesAsync();
+        BroadcastEvent(gameNumber, e);
+    }
+
+    public static async Task Demerit(int gameNumber, bool firstTeam, string playerSearchable, string? reason) {
+        var db = new HandballContext();
+        var game = await db.Games.Where(g => g.GameNumber == gameNumber).IncludeRelevant().Include(g => g.Events)
+            .FirstAsync();
+        if (!game.Started) throw new InvalidOperationException("The game has not started");
+        if (game.Ended) throw new InvalidOperationException("The game has ended");
+
+        var player = game.Players.First(pgs => pgs.Player.SearchableName == playerSearchable);
+
+        var e = SetUpGameEvent(game, GameEventType.Demerit, firstTeam, player.PlayerId, notes: reason);
+        await db.AddAsync(e);
+        GameEventSynchroniser.SyncDemerit(game, e);
+        await db.SaveChangesAsync();
+        BroadcastEvent(gameNumber, e);
+    }
+
+    private static int CourtLatitudeToInt(string courtLatitude) {
+        return courtLatitude switch {
+            "wide-left" => 1,
+            "left" => 2,
+            "center-left" => 3,
+            "center-right" => 4,
+            "right" => 5,
+            "wide-right" => 6,
+            _ => throw new ArgumentOutOfRangeException(nameof(courtLatitude), courtLatitude, null)
+        };
+    }
+
+    private static int CourtLongitudeToInt(string courtLatitude) {
+        return courtLatitude switch {
+            "deep" => 1,
+            "back" => 2,
+            "mid" => 3,
+            "front" => 4,
+            _ => throw new ArgumentOutOfRangeException(nameof(courtLatitude), courtLatitude, null)
+        };
+    }
+
+    public static async Task ScorePoint(int gameNumber, bool firstTeam, bool leftPlayer, string? scoreMethod,
+        string[]? location) {
         var db = new HandballContext();
         var game = await db.Games.IncludeRelevant().Include(g => g.Events).FirstAsync(g => g.GameNumber == gameNumber);
         if (!game.Started) throw new InvalidOperationException("The game has not started");
@@ -257,12 +336,14 @@ public static class GameManager {
             player = leftPlayer ? gameEvent.TeamTwoLeftId : gameEvent.TeamTwoRightId;
         }
 
-        var e = await AddPointToGame(db, gameNumber, firstTeam, player, notes: scoreMethod);
+        var e = await AddPointToGame(db, gameNumber, firstTeam, player, notes: scoreMethod,
+            location: location != null ? (CourtLongitudeToInt(location[0]), CourtLatitudeToInt(location[1])) : null);
         await db.SaveChangesAsync();
         BroadcastEvent(gameNumber, e);
     }
 
-    public static async Task ScorePoint(int gameNumber, bool firstTeam, string playerSearchable, string? scoreMethod) {
+    public static async Task ScorePoint(int gameNumber, bool firstTeam, string playerSearchable, string? scoreMethod,
+        string[]? location) {
         var db = new HandballContext();
         var game = await db.Games.Where(g => g.GameNumber == gameNumber).IncludeRelevant().Include(g => g.Events)
             .FirstAsync();
@@ -273,12 +354,14 @@ public static class GameManager {
         }
 
         var player = game.Players.First(pgs => pgs.Player.SearchableName == playerSearchable);
-        var e = await AddPointToGame(db, gameNumber, firstTeam, player.PlayerId, notes: scoreMethod);
+        var e = await AddPointToGame(db, gameNumber, firstTeam, player.PlayerId, notes: scoreMethod,
+            location: location != null ? (CourtLongitudeToInt(location[0]), CourtLatitudeToInt(location[1])) : null);
         await db.SaveChangesAsync();
         BroadcastEvent(gameNumber, e);
     }
 
-    public static async Task Ace(int gameNumber) {
+    public static async Task Ace(int gameNumber,
+        string[]? location) {
         var db = new HandballContext();
         var game = await db.Games.Where(g => g.GameNumber == gameNumber).IncludeRelevant().Include(g => g.Events)
             .FirstAsync();
@@ -286,7 +369,8 @@ public static class GameManager {
         if (game.Ended) throw new InvalidOperationException("The game has ended");
         var prevGameEvent = game.Events.OrderByDescending(gE => gE.Id).FirstOrDefault()!;
         var firstTeam = prevGameEvent.TeamToServeId == game.TeamOneId;
-        var e = await AddPointToGame(db, gameNumber, firstTeam, prevGameEvent.PlayerToServeId, notes: "Ace");
+        var e = await AddPointToGame(db, gameNumber, firstTeam, prevGameEvent.PlayerToServeId, notes: "Ace",
+            location: location != null ? (CourtLongitudeToInt(location[0]), CourtLatitudeToInt(location[1])) : null);
         await db.SaveChangesAsync();
         BroadcastEvent(gameNumber, e);
     }
@@ -305,7 +389,7 @@ public static class GameManager {
             .Select(gE => gE.EventType is GameEventType.Fault).FirstOrDefault(false);
         await db.AddAsync(gameEvent);
         if (faulted) {
-            await AddPointToGame(db, gameNumber, !firstTeam, null, true);
+            await AddPointToGame(db, gameNumber, !firstTeam, null, "Double Fault");
         }
 
         GameEventSynchroniser.SyncFault(game, gameEvent);
@@ -501,18 +585,15 @@ public static class GameManager {
 
             bothCarded = Math.Min(bothCarded,
                 Math.Min(Math.Max(myScore + 2, game.ScoreToWin), game.ScoreToForceWin) - theirScore);
-
+            var penaltyReason = players.Count == 1 ? "Penalty Point" : "Both Players Carded";
             for (var i = 0; i < (players.Count == 1 ? duration : bothCarded); i++) {
                 await AddPointToGame(
                     db,
                     gameNumber,
                     !firstTeam,
                     null,
-                    penalty: true
+                    penaltyReason
                 );
-                foreach (var pgs in players.Where(pgs => pgs.CardTimeRemaining > 0)) {
-                    pgs.CardTimeRemaining--;
-                }
             }
         }
 
@@ -553,7 +634,6 @@ public static class GameManager {
     public static async Task End(
         int gameNumber,
         List<string> bestPlayerOrder,
-        List<string> nefariousPlayers,
         int teamOneRating, int teamTwoRating,
         string notes,
         string? protestReasonTeamOne, string? protestReasonTeamTwo,
@@ -587,7 +667,6 @@ public static class GameManager {
         var votes = 2;
         var task = new List<Task>();
         foreach (var pgs in playersInOrder) {
-            pgs.IsEvil = nefariousPlayers.Contains(pgs.Player.SearchableName);
             pgs.Rating = pgs.TeamId == game.TeamOneId ? teamOneRating : teamTwoRating;
             if (votes <= 0) continue;
             var votesEvent = SetUpGameEvent(game, GameEventType.Votes, true, pgs.PlayerId, details: votes--);
@@ -608,18 +687,30 @@ public static class GameManager {
             Ranked:
                 true,
             IsFinal:
-                false
+                false,
+            TeamOne.NonCaptainId: not null,
+            TeamTwo.NonCaptain: not null
         }) {
             var playingPlayers = game.Players
                 .Where(pgs => (isForfeit || pgs.RoundsCarded + pgs.RoundsOnCourt > 0)).ToList();
+            var playingPlayerIds = playingPlayers.Select(pgs => pgs.PlayerId).ToList();
             var teamOneElo = playingPlayers.Where(pgs => pgs.TeamId == game.TeamOneId).Select(pgs => pgs.InitialElo)
                 .Average();
             var teamTwoElo = playingPlayers.Where(pgs => pgs.TeamId == game.TeamTwoId).Select(pgs => pgs.InitialElo)
                 .Average();
-            foreach (var pgs in playingPlayers) {
+            foreach (var pgs in game.Players) {
+                if (!playingPlayerIds.Contains(pgs.PlayerId)) {
+                    pgs.EloDelta = 0;
+                    continue;
+                }
+
                 var myElo = pgs.TeamId == game.TeamOneId ? teamOneElo : teamTwoElo;
                 var oppElo = pgs.TeamId == game.TeamOneId ? teamTwoElo : teamOneElo;
                 pgs.EloDelta = EloCalculator.CalculateEloDelta(myElo, oppElo, game.WinningTeamId == pgs.TeamId);
+            }
+        } else {
+            foreach (var pgs in game.Players) {
+                pgs.EloDelta = 0;
             }
         }
 
@@ -648,9 +739,11 @@ public static class GameManager {
         var teams = new List<Team>();
         var people = await
             db.People.Where(p => allNames.Contains(p.Name)).ToListAsync();
-        foreach (var (players, teamName) in new[] { (playersTeamOne, teamOneName), (playersTeamTwo, teamTwoName) }) {
+        foreach (var (playerNames, givenTeamName) in new[]
+                     {(playersTeamOne, teamOneName), (playersTeamTwo, teamTwoName)}) {
+            var teamName = givenTeamName;
             Team team;
-            if (players == null || players.Length == 0) {
+            if (playerNames == null || playerNames.Length == 0) {
                 if (teamName == null) {
                     throw new ArgumentNullException(teams.Count == 0 ? nameof(playersTeamOne) : nameof(playersTeamTwo),
                         "You must specify either a team name or the players for the team");
@@ -658,7 +751,7 @@ public static class GameManager {
 
                 team = (await db.Teams.IncludeRelevant().FirstOrDefaultAsync(t => t.Name == teamName))!;
             } else {
-                var playerIds = players.Select(a => people.FirstOrDefault(p => p.Name == a)?.Id)
+                var playerIds = playerNames.Select(a => people.FirstOrDefault(p => p.Name == a)?.Id)
                     .ToList();
                 while (playerIds.Count < 3) {
                     playerIds.Add(null);
@@ -676,6 +769,14 @@ public static class GameManager {
                         (t.SubstituteId.HasValue ? 1 : 0) == playerIds.Count(a => a.HasValue))
                 );
                 if (maybeTeam == null) {
+                    if (playerIds[1] == null) {
+                        teamName = "(Solo) " + playerNames[0];
+                    }
+
+                    if (teamName == null) {
+                        throw new InvalidOperationException("Must pass a team name when creating a team!");
+                    }
+
                     team = new Team {
                         CaptainId = playerIds![0],
                         NonCaptainId = playerIds[1],
@@ -683,7 +784,15 @@ public static class GameManager {
                         Name = teamName,
                         SearchableName = Utilities.ToSearchable(teamName)
                     };
-                    _ = Task.Run(() => ImageHelper.SetGoogleImageForTeam(team.Id));
+                    if (playerIds[1] == null) {
+                        team.TeamColor = "#12114a";
+                        var searchableName = people.First(p => p.Id == playerIds[0]).SearchableName;
+                        team.ImageUrl = "/api/people/image?name=" + searchableName;
+                        team.BigImageUrl = "/api/people/image?name=" + searchableName + "&big=true";
+                    } else {
+                        _ = Task.Run(() => ImageHelper.SetGoogleImageForTeam(team.Id));
+                    }
+
                     await db.Teams.AddAsync(team);
                 } else {
                     team = maybeTeam;
@@ -811,7 +920,8 @@ public static class GameManager {
                     OpponentId = team.Id == teamOneId ? teamTwoId : teamOneId,
                     InitialElo = (prevGame?.InitialElo ?? 1500.0) + (prevGame?.EloDelta ?? 0),
                     CardTime = carryCardTimes ? Math.Max(prevGame?.CardTime ?? 0, 0) : 0,
-                    CardTimeRemaining = carryCardTimes ? Math.Max(prevGame?.CardTimeRemaining ?? 0, 0) : 0
+                    CardTimeRemaining = carryCardTimes ? Math.Max(prevGame?.CardTimeRemaining ?? 0, 0) : 0,
+                    EloDelta = isBye ? 0 : null
                 }).AsTask());
             }
         }
@@ -829,9 +939,8 @@ public static class GameManager {
         if (Game.ResolvedStatuses.Contains(game.AdminStatus))
             throw new InvalidOperationException("The game is resolved");
         var gameEvent = SetUpGameEvent(game, GameEventType.Resolve, null, null);
-        game.AdminStatus = "Resolved";
-        game.Resolved = true;
         await db.AddAsync(gameEvent);
+        GameEventSynchroniser.SyncResolve(game, gameEvent);
         await db.SaveChangesAsync();
         BroadcastUpdate(gameNumber);
     }

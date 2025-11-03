@@ -11,9 +11,9 @@ namespace HandballBackend;
 internal static class UtilityFunctions {
     public static void init() {
         Config.SECRETS_FOLDER =
-            @"G:\Programming\c#\HandballBackend\build\secrets";
+            @"C:\Users\healy\RiderProjects\HandballBackend\build\secrets";
         Config.RESOURCES_FOLDER =
-            @"G:\Programming\c#\HandballBackend\build\resources";
+            @"C:\Users\healy\RiderProjects\HandballBackend\build\resources";
     }
 
 
@@ -25,43 +25,84 @@ internal static class UtilityFunctions {
 
     public static void RegenerateElos() {
         init();
-        var teamElos = new Dictionary<int, double>();
+        var playerElos = new Dictionary<int, double>();
         var db = new HandballContext();
-        var games = db.Games.Where(g => !g.IsFinal && g.Ranked && !g.IsBye)
-            .OrderBy(g => g.TournamentId == 2)
-            .ThenBy(g => g.TournamentId == 3)
-            .ThenBy(g => g.StartTime)
-            .ThenBy(g => g.Id)
+        var allPgs = db.PlayerGameStats.ToList();
+        foreach (var p in allPgs) {
+            p.EloDelta = 0;
+        }
+
+        db.SaveChanges();
+        var games = db.Games
+            .OrderBy(g => g.GameNumber)
+            .Where(g => g.GameNumber > 0)
             .IncludeRelevant().Include(g =>
-                g.Events.Where(gE => gE.EventType == GameEventType.Forfeit || gE.EventType == GameEventType.Abandon));
+                g.Events.Where(gE => gE.EventType == GameEventType.Forfeit || gE.EventType == GameEventType.Abandon))
+            .ToList();
         foreach (var game in games) {
-            if (!game.Ended) continue;
             var isRandomAbandonment = Math.Max(game.TeamOneScore, game.TeamTwoScore) < 5 &&
                                       game.Events.Any(gE => gE.EventType == GameEventType.Abandon);
-            if (isRandomAbandonment) continue;
+            var shouldHaveDelta =
+                game is {
+                    IsBye: false,
+                    IsFinal: false,
+                    Ranked: true,
+                    TeamOne.NonCaptainId: not null,
+                    TeamTwo.NonCaptainId: not null
+                } && !isRandomAbandonment &&
+                game.Ended;
             var playingPlayers = game.Players
                 .Where(pgs =>
                     game.Events.Any(gE => gE.EventType == GameEventType.Forfeit) ||
                     pgs.RoundsCarded + pgs.RoundsOnCourt > 0).ToList();
-            var teamOneElo = teamElos.GetValueOrDefault(game.TeamOne.Id, playingPlayers
-                .Where(pgs => pgs.TeamId == game.TeamOneId).Select(pgs => pgs.InitialElo)
-                .Average());
-            var teamTwoElo = teamElos.GetValueOrDefault(game.TeamTwo.Id, playingPlayers
-                .Where(pgs => pgs.TeamId == game.TeamTwoId).Select(pgs => pgs.InitialElo)
-                .Average());
+            var teamOneElo = playingPlayers
+                .Where(pgs => pgs.TeamId == game.TeamOneId)
+                .Select(pgs => playerElos.GetValueOrDefault(pgs.PlayerId, 1500))
+                .DefaultIfEmpty()
+                .Average();
+            var teamTwoElo = playingPlayers
+                .Where(pgs => pgs.TeamId == game.TeamTwoId)
+                .Select(pgs => playerElos.GetValueOrDefault(pgs.PlayerId, 1500))
+                .DefaultIfEmpty()
+                .Average();
+            var last = 0;
             foreach (var pgs in playingPlayers) {
+                var initialElo = playerElos.GetValueOrDefault(pgs.PlayerId, 1500);
+                pgs.InitialElo = initialElo;
+                if (!shouldHaveDelta) {
+                    pgs.EloDelta = 0;
+                    continue;
+                }
+
+                if (pgs.GameId > last + 50) {
+                    Console.WriteLine($"Game {pgs.GameId}");
+                    last = pgs.GameId;
+                }
+
+
                 var myElo = pgs.TeamId == game.TeamOneId ? teamOneElo : teamTwoElo;
                 var oppElo = pgs.TeamId == game.TeamOneId ? teamTwoElo : teamOneElo;
                 var eloDelta = EloCalculator.CalculateEloDelta(myElo, oppElo, game.WinningTeamId == pgs.TeamId);
                 pgs.EloDelta = eloDelta;
-                teamElos[pgs.TeamId] = myElo + eloDelta;
-                if (pgs.TeamId == 7) Console.WriteLine(teamElos[7]);
+                playerElos[pgs.PlayerId] = initialElo + eloDelta;
             }
+        }
+
+        foreach (var kvp in playerElos) {
+            Console.WriteLine($"{kvp.Key}: {kvp.Value}");
         }
 
         db.SaveChanges();
     }
 
+
+    public static void DestroyElos() {
+        init();
+        var db = new HandballContext();
+
+
+        db.SaveChanges();
+    }
 
     public static void EncryptString() {
         string? x;
@@ -96,8 +137,7 @@ internal static class UtilityFunctions {
             GameManager.Forfeit(i, false);
             GameManager.End(
                 i,
-                game.Players.Select(p => p.Player.SearchableName).ToList(),
-                [], 3, 3,
+                game.Players.Select(p => p.Player.SearchableName).ToList(), 3, 3,
                 "Testing",
                 null,
                 null,
@@ -113,7 +153,7 @@ internal static class UtilityFunctions {
 
     public static void ResetTournament() {
         init();
-        const int tournamentId = 11;
+        const int tournamentId = 13;
         Console.WriteLine($"Please Type 'CONFRIM' to confirm you want to reset the {tournamentId - 1}th tournament:");
         if (Console.ReadLine() != "CONFIRM") return;
 
@@ -278,8 +318,8 @@ internal static class UtilityFunctions {
                     GamesUmpired = to.Official.Games.Count(g => g is { TournamentId: tournamentId, Round: < round }),
                     Name = to.Official.Person.Name,
                     GamesScored = to.Official.ScoredGames.Count(g => g is { TournamentId: tournamentId, Round: < round }),
-                    UmpireProficiency = to.UmpireProficiency,
-                    ScorerProficiency = to.ScorerProficiency,
+                    UmpireProficiency = (AbstractFixtureGenerator.UmpiringProficiencies) to.UmpireProficiency,
+                    ScorerProficiency = (AbstractFixtureGenerator.UmpiringProficiencies) to.ScorerProficiency,
                 }).OrderBy(o => o.GamesUmpired).ToList();
 
 

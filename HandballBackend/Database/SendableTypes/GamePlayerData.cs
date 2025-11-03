@@ -19,12 +19,11 @@ public class GamePlayerData : PersonData {
     )
         : this(game.Players.First(p => p.PlayerId == player.Id), includeStats, formatData) { }
 
-    public GamePlayerData(
-        PlayerGameStats pgs,
+    public GamePlayerData(PlayerGameStats pgs,
         bool includeStats = false,
         bool formatData = false,
-        bool isAdmin = false
-    )
+        bool isUmpire = false,
+        bool isAdmin = false)
         : base(pgs.Player) {
         BestPlayerVotes = pgs.BestPlayerVotes;
         CardTime = pgs.CardTime;
@@ -32,9 +31,9 @@ public class GamePlayerData : PersonData {
         SideOfCourt = pgs.SideOfCourt;
         IsCaptain = pgs.PlayerId == pgs.Team.CaptainId;
         StartSide = pgs.StartSide;
-        PrevCards = isAdmin
+        PrevCards = isUmpire
             ? pgs.Player.Events?.Where(gE =>
-                    gE.TournamentId == pgs.TournamentId && gE.IsCard && gE.GameId < pgs.GameId
+                    gE.TournamentId == pgs.TournamentId && gE.IsCard && gE.GameId <= pgs.GameId
                 )
                 .Select(gE => gE.ToSendableData())
                 .ToList() ?? []

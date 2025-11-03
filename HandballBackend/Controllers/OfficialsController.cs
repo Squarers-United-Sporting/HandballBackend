@@ -1,4 +1,3 @@
-using System.ComponentModel.DataAnnotations;
 using HandballBackend.Database;
 using HandballBackend.Database.Models;
 using HandballBackend.Database.SendableTypes;
@@ -108,7 +107,7 @@ public class OfficialsController : ControllerBase {
 
     public class AddOfficialRequest {
         public required string OfficialSearchableName { get; set; }
-        public required string TournamentSearchableName { get; set; }
+        public required string Tournament { get; set; }
 
         public required int UmpireProficiency { get; set; }
         public required int ScorerProficiency { get; set; }
@@ -122,7 +121,7 @@ public class OfficialsController : ControllerBase {
         [FromBody] AddOfficialRequest request) {
         var db = new HandballContext();
         var tournament = await db.Tournaments
-            .FirstOrDefaultAsync(a => a.SearchableName == request.TournamentSearchableName);
+            .FirstOrDefaultAsync(a => a.SearchableName == request.Tournament);
         if (tournament is null) {
             return NotFound("Invalid Tournament");
         }
@@ -161,7 +160,7 @@ public class OfficialsController : ControllerBase {
 
     public class RemoveOfficialRequest {
         public required string OfficialSearchableName { get; set; }
-        public required string TournamentSearchableName { get; set; }
+        public required string Tournament { get; set; }
     }
 
     [TournamentAuthorize(PermissionType.UmpireManager)]
@@ -169,7 +168,7 @@ public class OfficialsController : ControllerBase {
     public async Task<ActionResult> RemoveOfficialFromTournament([FromBody] RemoveOfficialRequest request) {
         var db = new HandballContext();
         var tournament = await db.Tournaments
-            .FirstOrDefaultAsync(a => a.SearchableName == request.TournamentSearchableName);
+            .FirstOrDefaultAsync(a => a.SearchableName == request.Tournament);
         if (tournament is null) {
             return NotFound("Invalid Tournament");
         }
@@ -186,6 +185,11 @@ public class OfficialsController : ControllerBase {
             return BadRequest("The Official doesn't exist");
         }
 
+        if (tournamentOfficial.Role.ToPermissionType() >= PermissionHelper.GetRequestPermissions(tournament)) {
+            return Forbid("You cannot delete someone with permissions higher than your own!");
+        }
+
+
         db.TournamentOfficials.Remove(tournamentOfficial);
 
         await db.SaveChangesAsync();
@@ -194,7 +198,7 @@ public class OfficialsController : ControllerBase {
 
     public class UpdateOfficialRequest {
         public required string OfficialSearchableName { get; set; }
-        public required string TournamentSearchableName { get; set; }
+        public required string Tournament { get; set; }
 
         public int? UmpireProficiency { get; set; }
         public int? ScorerProficiency { get; set; }
@@ -206,7 +210,7 @@ public class OfficialsController : ControllerBase {
     public async Task<ActionResult> UpdateOfficialFromTournament([FromBody] UpdateOfficialRequest request) {
         var db = new HandballContext();
         var tournament = await db.Tournaments
-            .FirstOrDefaultAsync(a => a.SearchableName == request.TournamentSearchableName);
+            .FirstOrDefaultAsync(a => a.SearchableName == request.Tournament);
         if (tournament is null) {
             return NotFound("Invalid Tournament");
         }
@@ -233,6 +237,14 @@ public class OfficialsController : ControllerBase {
 
         if (request.Role != null) {
             if (Enum.TryParse<OfficialRole>(request.Role.Replace(" ", ""), out var role)) {
+                if (tournamentOfficial.Role.ToPermissionType() >= PermissionHelper.GetRequestPermissions(tournament)) {
+                    return Forbid("You cannot set permissions of someone who is higher than your own!");
+                }
+
+                if (role.ToPermissionType() >= PermissionHelper.GetRequestPermissions(tournament)) {
+                    return Forbid("You cannot set permissions higher than your own!");
+                }
+
                 tournamentOfficial.Role = role;
             } else {
                 return BadRequest("Invalid Role");

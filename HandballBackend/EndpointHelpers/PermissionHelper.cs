@@ -69,10 +69,10 @@ public static class PermissionHelper {
         var person = PersonByToken(GetToken());
         if (person == null) return false;
         if (IsAdmin()) return true;
-        if (tournament == null) return person.PermissionLevel.ToInt() >= PermissionType.UmpireManager.ToInt();
+        if (tournament == null) return person.PermissionLevel.ToInt() >= PermissionType.Umpire.ToInt();
         return person.Official!.TournamentOfficials.Any(to =>
             to.TournamentId == tournament.Id &&
-            to.Role.ToInt() >= PermissionType.UmpireManager.ToInt());
+            to.Role.ToInt() >= PermissionType.Umpire.ToInt());
     }
 
     public static bool IsUmpire(Game g) {
@@ -93,6 +93,15 @@ public static class PermissionHelper {
             5 => PermissionType.Admin,
             _ => throw new ArgumentOutOfRangeException(nameof(permissionType), permissionType, null)
         };
+    }
+
+    public static PermissionType GetRequestPermissions(Tournament? tournament) {
+        var person = PersonByToken(GetToken());
+        if (person == null) return PermissionType.None;
+        if (IsAdmin()) return PermissionType.Admin;
+        if (tournament == null) return person.PermissionLevel;
+        return person.Official!.TournamentOfficials.First(to =>
+            to.TournamentId == tournament.Id).Role.ToPermissionType();
     }
 
     private static bool PersonOrElse(HandballContext db, int personId, out Person person) {

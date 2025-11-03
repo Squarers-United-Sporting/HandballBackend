@@ -1,11 +1,9 @@
-using HandballBackend.Authentication;
-using HandballBackend.Utils;
 using HandballBackend.Database;
 using HandballBackend.Database.Models;
 using HandballBackend.Database.SendableTypes;
 using HandballBackend.EndpointHelpers;
 using HandballBackend.ErrorTypes;
-using Microsoft.AspNetCore.Authorization;
+using HandballBackend.Utils;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -133,8 +131,9 @@ public class TeamsController : ControllerBase {
                 }
             }
 
-            teamData = await query.OrderByDescending(t => t.TournamentTeams.Any(tt => tt.TournamentId != 1))
-                .ThenBy(t => EF.Functions.Like(t.SearchableName, "solo_%"))
+            teamData = await query
+                .OrderBy(t => EF.Functions.Like(t.SearchableName, "solo_%"))
+                .ThenByDescending(t => t.TournamentTeams.Any(tt => tt.TournamentId != 1))
                 .ThenBy(t => t.SearchableName)
                 .Select(t => t.ToSendableData(includeStats, includePlayerStats, formatData, null)).ToArrayAsync();
         }
@@ -221,9 +220,45 @@ public class TeamsController : ControllerBase {
         };
     }
 
+    public class GetStandingsResult {
+        public required List<TeamData> TopThree { get; set; }
+        public TournamentData? Tournament { get; set; }
+    }
+
+    [HttpGet("standings")]
+    public async Task<ActionResult<GetStandingsResult>> GetStandings(
+        [FromQuery(Name = "tournament")] string tournamentSearchable,
+        [FromQuery] bool returnTournament = false) {
+        var db = new HandballContext();
+
+        if (!Utilities.TournamentOrElse(db, tournamentSearchable, out var tournament) || tournament is null) {
+            return NotFound(new InvalidTournament(tournamentSearchable));
+        }
+
+        if (!tournament.Finished) {
+            return BadRequest(new ActionNotAllowed("Tournament must be ended to get results!"));
+        }
+
+        var finals = await db.Games.Where(g => g.TournamentId == tournament.Id && g.IsFinal)
+            .OrderByDescending(g => g.GameNumber).IncludeRelevant().Take(2).ToListAsync();
+
+        List<TeamData> list = [finals[0].WinningTeam.ToSendableData(), finals[0].LosingTeam.ToSendableData()];
+
+        if (finals[1].WinningTeamId == finals[0].TeamOneId || finals[1].WinningTeamId == finals[1].TeamTwoId) {
+            list.Add(finals[1].LosingTeam.ToSendableData());
+        } else {
+            list.Add(finals[1].WinningTeam.ToSendableData());
+        }
+
+        return new GetStandingsResult {
+            TopThree = list,
+            Tournament = returnTournament ? tournament.ToSendableData() : null
+        };
+    }
+
 
     public class AddTeamRequest {
-        public required string TournamentSearchableName { get; set; }
+        public required string Tournament { get; set; }
         public string? TeamName { get; set; }
         public string? CaptainName { get; set; }
         public string? NonCaptainName { get; set; }
@@ -236,12 +271,12 @@ public class TeamsController : ControllerBase {
     }
 
     [HttpPost("addToTournament")]
-    [Authorize(Policy = Policies.IsAdmin)]
+    [TournamentAuthorize(PermissionType.UmpireManager)]
     public async Task<ActionResult<AddTeamResponse>> AddTeamToTournament(
         [FromBody] AddTeamRequest request) {
         var db = new HandballContext();
         var tournament = db.Tournaments
-            .FirstOrDefault(a => a.SearchableName == request.TournamentSearchableName);
+            .FirstOrDefault(a => a.SearchableName == request.Tournament);
         if (tournament is null) {
             return NotFound("Invalid Tournament");
         }
@@ -312,7 +347,7 @@ public class TeamsController : ControllerBase {
 
 
     public class UpdateTeamRequest {
-        public required string TournamentSearchableName { get; set; }
+        public required string Tournament { get; set; }
         public required string TeamSearchableName { get; set; }
         public string? NewName { get; set; }
         public string? NewColor { get; set; }
@@ -328,7 +363,7 @@ public class TeamsController : ControllerBase {
         [FromBody] UpdateTeamRequest request) {
         var db = new HandballContext();
         var tournament = await db.Tournaments
-            .FirstOrDefaultAsync(a => a.SearchableName == request.TournamentSearchableName);
+            .FirstOrDefaultAsync(a => a.SearchableName == request.Tournament);
         if (tournament is null) {
             return NotFound("Invalid Tournament");
         }
@@ -373,7 +408,7 @@ public class TeamsController : ControllerBase {
 
     public class RemoveTeamRequest {
         public string? TeamSearchableName { get; set; }
-        public string? TournamentSearchableName { get; set; }
+        public string? Tournament { get; set; }
     }
 
     [HttpDelete("removeFromTournament")]
@@ -381,7 +416,7 @@ public class TeamsController : ControllerBase {
     public async Task<ActionResult> RemoveTeamFromTournament([FromBody] RemoveTeamRequest request) {
         var db = new HandballContext();
         var tournament = await db.Tournaments
-            .FirstOrDefaultAsync(a => a.SearchableName == request.TournamentSearchableName);
+            .FirstOrDefaultAsync(a => a.SearchableName == request.Tournament);
         if (tournament is null) {
             return NotFound("Invalid Tournament");
         }

@@ -11,26 +11,69 @@ using Microsoft.EntityFrameworkCore;
 namespace HandballBackend.FixtureGenerator;
 
 public abstract class AbstractFixtureGenerator(int tournamentId, bool fillOfficials, bool fillCourts) {
-    protected static class UmpiringProficiencies {
-        public const int BestOfficial = 3;
-        public const int MiddleOfficial = 2;
-        public const int BadOfficial = 1;
-        public const int NotOfficial = 0;
-        public const int EmergencyOfficial = -1;
+    public enum UmpiringProficiencies {
+        BestOfficial = 3,
+        MiddleOfficial = 2,
+        BadOfficial = 1,
+        NotOfficial = 0,
+        EmergencyOfficial = -1
+    }
+
+    private static readonly Dictionary<string, Func<int, AbstractFixtureGenerator>> FixtureGenerators = new();
+    private static readonly Dictionary<string, Func<int, AbstractFixtureGenerator>> FinalsGenerators = new();
+    private static bool _isPopulated = false;
+
+    private static void Register(Func<int, AbstractFixtureGenerator> func, string name, bool isFinal) {
+        if (isFinal) {
+            FinalsGenerators[name] = func;
+        } else {
+            FixtureGenerators[name] = func;
+        }
+    }
+
+    private static void PopulateFixtures() {
+        _isPopulated = true;
+        Register(tid => new OneRound(tid), "OneRound", false);
+        Register(tid => new Pooled(tid), "Pooled", false);
+        Register(tid => new RoundRobin(tid), "RoundRobin", false);
+        Register(tid => new Swiss(tid), "Swiss", false);
+        Register(tid => new Pooled(tid, blitz: true), "PooledBlitz", false);
+        Register(tid => new RoundRobin(tid, blitz: true), "RoundRobinBlitz", false);
+
+
+        Register(tid => new PooledFinals(tid), "PooledFinals", true);
+        Register(tid => new BasicFinals(tid), "BasicFinals", true);
+        Register(tid => new TopThreeFinals(tid), "TopThreeFinals", true);
     }
 
     public static AbstractFixtureGenerator GetControllerByName(string name, int tournamentId) {
-        return name switch {
-            "OneRound" => new OneRound(tournamentId),
-            "Pooled" => new Pooled(tournamentId),
-            "RoundRobin" => new RoundRobin(tournamentId),
-            "Swiss" => new Swiss(tournamentId),
-            "PooledFinals" => new PooledFinals(tournamentId),
-            "BasicFinals" => new BasicFinals(tournamentId),
-            "TopThreeFinals" => new TopThreeFinals(tournamentId),
-            _ => throw new ArgumentOutOfRangeException(nameof(name), name, null)
-        };
+        if (!_isPopulated) {
+            PopulateFixtures();
+        }
+
+        if (FixtureGenerators.TryGetValue(name, out var func) || FinalsGenerators.TryGetValue(name, out func)) {
+            return func(tournamentId);
+        }
+
+        throw new ArgumentException($"Unknown fixture generator {name}");
     }
+
+    public static List<string> GetFixtureGeneratorNames() {
+        if (!_isPopulated) {
+            PopulateFixtures();
+        }
+
+        return FixtureGenerators.Keys.ToList();
+    }
+
+    public static List<string> GetFinalsGeneratorNames() {
+        if (!_isPopulated) {
+            PopulateFixtures();
+        }
+
+        return FinalsGenerators.Keys.ToList();
+    }
+
 
     public virtual async Task<bool> EndOfRound() {
         if (fillCourts) {
@@ -56,7 +99,6 @@ public abstract class AbstractFixtureGenerator(int tournamentId, bool fillOffici
 
     public virtual async Task BeginTournament() {
         var db = new HandballContext();
-        (await db.Tournaments.FindAsync(tournamentId))!.Started = true;
         await EndOfRound();
         await db.SaveChangesAsync();
     }
@@ -131,8 +173,8 @@ public abstract class AbstractFixtureGenerator(int tournamentId, bool fillOffici
         public int OfficialId;
         public int GamesUmpired;
         public int GamesScored;
-        public int UmpireProficiency;
-        public int ScorerProficiency;
+        public UmpiringProficiencies UmpireProficiency;
+        public UmpiringProficiencies ScorerProficiency;
     }
 
     private async Task AddUmpires() {
@@ -140,6 +182,7 @@ public abstract class AbstractFixtureGenerator(int tournamentId, bool fillOffici
         var games = await db.Games.Where(g => g.TournamentId == tournamentId && !g.Started && !g.IsBye)
             .IncludeRelevant().ToListAsync();
         if (games.Count <= 0) return;
+        var tournament = (await db.Tournaments.FindAsync(tournamentId))!;
         var round = games.Max(g => g.Round);
         var courtOneGames = games.Where(g => g.Court == 0).ToList();
         var courtTwoGames = games.Where(g => g.Court == 1).Cast<Game?>().ToList();
@@ -157,8 +200,8 @@ public abstract class AbstractFixtureGenerator(int tournamentId, bool fillOffici
                     GamesUmpired = to.Official.Games.Count(g => g.TournamentId == tournamentId && g.Round < round),
                     Name = to.Official.Person.Name,
                     GamesScored = to.Official.ScoredGames.Count(g => g.TournamentId == tournamentId && g.Round < round),
-                    UmpireProficiency = to.UmpireProficiency,
-                    ScorerProficiency = to.ScorerProficiency
+                    UmpireProficiency = (UmpiringProficiencies) to.UmpireProficiency,
+                    ScorerProficiency = (UmpiringProficiencies) to.ScorerProficiency
                 }).OrderBy(o => o.GamesUmpired).ToList();
 
         while (courtOneGames.Count > courtTwoGames.Count) {
@@ -183,20 +226,24 @@ public abstract class AbstractFixtureGenerator(int tournamentId, bool fillOffici
         }
 
         var solutionArray = solution.ToArray();
-        if (!TrySolution(solutionArray, officials)) {
+        if (!TrySolution(solutionArray, officials, requiresScorer: tournament.HasScorer)) {
             //the solution found no possible result
-            TrySolution(solutionArray, officials, 0, true, false, true);
+            TrySolution(solutionArray, officials, 0, true, false, true, requiresScorer: true);
         }
 
-        foreach (var soln in solution.SelectMany(i => new[] { i.Item1, i.Item2 }).Where(i => i != null).Cast<UmpiringSolution>()) {
+        foreach (var soln in solution.SelectMany(i => new[] { i.Item1, i.Item2 }).Where(i => i != null)
+                     .Cast<UmpiringSolution>()) {
             var game = games.First(g => g.Id == soln.GameId);
             if (soln.Official!.OfficialId > 0) {
                 game.OfficialId = soln.Official.OfficialId;
             }
-            if (soln.Scorer!.OfficialId > 0) {
+
+            if (tournament.HasScorer && soln.Scorer!.OfficialId > 0) {
                 game.ScorerId = soln.Scorer.OfficialId;
             }
         }
+
+        await db.SaveChangesAsync();
     }
 
     internal static bool TrySolution((UmpiringSolution, UmpiringSolution?)[] solutions,
@@ -204,9 +251,10 @@ public abstract class AbstractFixtureGenerator(int tournamentId, bool fillOffici
         int index = 0,
         bool courtOne = true,
         bool scorer = false,
-        bool force = false) {
+        bool force = false,
+        bool requiresScorer = true) {
         if (index >= solutions.Length) {
-            if (scorer) return true;
+            if (scorer || !requiresScorer) return true;
             // we have reached the last game
             if (!TrySolution(solutions, officials, 0, true, true)) {
                 return TrySolution(solutions, officials, 0, true, true, true);
