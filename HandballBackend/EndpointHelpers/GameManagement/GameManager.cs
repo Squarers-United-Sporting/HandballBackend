@@ -28,6 +28,18 @@ public static class GameManager {
         GameEventType.Resolve,
     ];
 
+    private static readonly string?[] VALID_FAULT_METHODS = [
+        null,
+        "Served Early",
+        "Didn't Go Diagonal",
+        "Out through BRA",
+        "Double Bounce",
+        "Straight",
+        "Foot Fault",
+        "Incorrect Side",
+        "Teammate in BRA",
+    ];
+
 
     private static void BroadcastEvent(int gameId, GameEvent e) {
         _ = Task.Run(() => ScoreboardController.SendGameUpdate(gameId, e));
@@ -375,7 +387,7 @@ public static class GameManager {
         BroadcastEvent(gameNumber, e);
     }
 
-    public static async Task Fault(int gameNumber) {
+    public static async Task Fault(int gameNumber, string? faultMethod) {
         var db = new HandballContext();
         var game = await db.Games.Where(g => g.GameNumber == gameNumber).IncludeRelevant().Include(g => g.Events)
             .FirstAsync();
@@ -383,7 +395,10 @@ public static class GameManager {
         if (game.Ended) throw new InvalidOperationException("The game has ended");
         var lastGameEvent = game.Events.OrderByDescending(gE => gE.Id).FirstOrDefault()!;
         var firstTeam = lastGameEvent.TeamToServeId == game.TeamOneId;
-        var gameEvent = SetUpGameEvent(game, GameEventType.Fault, firstTeam, lastGameEvent.PlayerToServeId);
+        if (!VALID_FAULT_METHODS.Contains(faultMethod)) {
+            throw new ArgumentException("The score method provided is invalid");
+        }
+        var gameEvent = SetUpGameEvent(game, GameEventType.Fault, firstTeam, lastGameEvent.PlayerToServeId, notes: faultMethod);
         var faulted = game.Events.Where(gE => gE.EventType is GameEventType.Fault or GameEventType.Score)
             .OrderByDescending(gE => gE.Id)
             .Select(gE => gE.EventType is GameEventType.Fault).FirstOrDefault(false);

@@ -230,6 +230,7 @@ public class EditGamesController : ControllerBase {
 
     public class FaultRequest {
         public required int Id { get; set; }
+        public string? Method { get; set; }
     }
 
     [HttpPost("fault")]
@@ -239,7 +240,7 @@ public class EditGamesController : ControllerBase {
             return Forbid();
         }
 
-        await GameManager.Fault(faultRequest.Id);
+        await GameManager.Fault(faultRequest.Id, faultRequest.Method);
         return NoContent();
     }
 
