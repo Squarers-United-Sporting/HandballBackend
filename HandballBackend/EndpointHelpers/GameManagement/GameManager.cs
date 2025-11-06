@@ -398,7 +398,9 @@ public static class GameManager {
         if (!VALID_FAULT_METHODS.Contains(faultMethod)) {
             throw new ArgumentException("The score method provided is invalid");
         }
-        var gameEvent = SetUpGameEvent(game, GameEventType.Fault, firstTeam, lastGameEvent.PlayerToServeId, notes: faultMethod);
+
+        var gameEvent = SetUpGameEvent(game, GameEventType.Fault, firstTeam, lastGameEvent.PlayerToServeId,
+            notes: faultMethod);
         var faulted = game.Events.Where(gE => gE.EventType is GameEventType.Fault or GameEventType.Score)
             .OrderByDescending(gE => gE.Id)
             .Select(gE => gE.EventType is GameEventType.Fault).FirstOrDefault(false);
@@ -620,7 +622,8 @@ public static class GameManager {
         var game = await db.Games.IncludeRelevant().Include(g => g.Events).FirstAsync(g => g.GameNumber == gameNumber);
         if (!game.Started) throw new InvalidOperationException("The game has not started");
         if (game.Ended) throw new InvalidOperationException("The game has ended");
-        var smallestId = game.Events.Where(gE => !IGNORED_BY_UNDO.Contains(gE.EventType) && gE.Notes != "Penalty")
+        var smallestId = game.Events.Where(gE =>
+                !IGNORED_BY_UNDO.Contains(gE.EventType) && gE is not { EventType: GameEventType.Score, PlayerId: null })
             .OrderByDescending(gE => gE.Id).First().Id;
         await db.GameEvents.Where(gE => gE.GameId == game.Id && gE.Id >= smallestId).ExecuteDeleteAsync();
         await db.SaveChangesAsync(); // Not necessary but probably still a good idea
