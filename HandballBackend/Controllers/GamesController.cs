@@ -148,7 +148,7 @@ public class GamesController() : ControllerBase {
         }
 
         var games = await query.OrderBy(g => g.Id)
-            .Select(g => g.ToSendableData(false, includeGameEvents, includeStats, formatData, isAdmin, isAdmin))
+            .Select(g => g.ToSendableData(tournament == null, includeGameEvents, includeStats, formatData, isAdmin, isAdmin))
             .ToArrayAsync();
 
         if (returnTournament && tournament is null) {
