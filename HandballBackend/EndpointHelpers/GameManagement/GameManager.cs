@@ -32,11 +32,11 @@ public static class GameManager {
         null,
         "Served Early",
         "Didn't Go Diagonal",
-        "Out through BRA",
+        "Out of Court",
+        "Out Through BRA",
         "Double Bounce",
         "Straight",
         "Foot Fault",
-        "Incorrect Side",
         "Teammate in BRA",
     ];
 
@@ -623,7 +623,7 @@ public static class GameManager {
         if (!game.Started) throw new InvalidOperationException("The game has not started");
         if (game.Ended) throw new InvalidOperationException("The game has ended");
         var smallestId = game.Events.Where(gE =>
-                !IGNORED_BY_UNDO.Contains(gE.EventType) && gE is not { EventType: GameEventType.Score, PlayerId: null })
+                !IGNORED_BY_UNDO.Contains(gE.EventType) && gE is not {EventType: GameEventType.Score, PlayerId: null})
             .OrderByDescending(gE => gE.Id).First().Id;
         await db.GameEvents.Where(gE => gE.GameId == game.Id && gE.Id >= smallestId).ExecuteDeleteAsync();
         await db.SaveChangesAsync(); // Not necessary but probably still a good idea
@@ -702,13 +702,13 @@ public static class GameManager {
         game.Length = Utilities.GetUnixSeconds() - game.StartTime;
         GameEventSynchroniser.SyncGameEnd(game, endEvent);
         if (!isRandomAbandonment && game is {
-            Ranked:
+                Ranked:
                 true,
-            IsFinal:
+                IsFinal:
                 false,
-            TeamOne.NonCaptainId: not null,
-            TeamTwo.NonCaptain: not null
-        }) {
+                TeamOne.NonCaptainId: not null,
+                TeamTwo.NonCaptain: not null
+            }) {
             var playingPlayers = game.Players
                 .Where(pgs => (isForfeit || pgs.RoundsCarded + pgs.RoundsOnCourt > 0)).ToList();
             var playingPlayerIds = playingPlayers.Select(pgs => pgs.PlayerId).ToList();
@@ -839,7 +839,7 @@ public static class GameManager {
         var ranked = tournament.Ranked;
         var isBye = false;
         var tasks = new List<Task>();
-        foreach (var team in new[] { teamOne, teamTwo }) {
+        foreach (var team in new[] {teamOne, teamTwo}) {
             if (team.Id == 1) {
                 // this is the bye team
                 isBye = true;
@@ -924,7 +924,7 @@ public static class GameManager {
             .ToDictionaryAsync(pgs => pgs!.PlayerId);
 
         tasks.Clear();
-        foreach (var team in new[] { teamOne, teamTwo }) {
+        foreach (var team in new[] {teamOne, teamTwo}) {
             if (team.Id == 1) continue;
             Person?[] teamPlayers = [team.Captain, team.NonCaptain, team.Substitute];
             foreach (var p in teamPlayers.Where(p => p != null).Cast<Person>()) {
