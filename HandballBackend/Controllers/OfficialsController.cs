@@ -22,10 +22,12 @@ public class OfficialsController : ControllerBase {
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<GetOfficialsResponse>> GetManyOfficials(
         [FromQuery(Name = "tournament")] string? tournamentSearchable = null,
-        [FromQuery] bool returnTournament = false
+        [FromQuery] bool returnTournament = false,
+        [FromQuery] int limit = -1,
+        [FromQuery] int page = -1
     ) {
         var db = new HandballContext();
-        OfficialData[]? officials;
+        IQueryable<Official> query;
 
 
         if (!Utilities.TournamentOrElse(db, tournamentSearchable, out var tournament)) {
@@ -35,26 +37,31 @@ public class OfficialsController : ControllerBase {
         var isAdmin = PermissionHelper.IsUmpireManager(tournament);
 
         if (tournament is not null) {
-            var intermediate = await db.TournamentOfficials
+            query = db.TournamentOfficials
                 .Where(a => a.TournamentId == tournament.Id)
                 .IncludeRelevant()
                 .OrderBy(p => p.Official.Person.SearchableName)
-                .ToArrayAsync();
-            officials = intermediate.Select(to => to.Official.ToSendableData(tournament, isAdmin: isAdmin))
-                .OrderByDescending(o => o.Role).ToArray();
-            ;
+                .Select(to => to.Official);
         } else {
-            officials = await db.Officials
+            query = db.Officials
                 .IncludeRelevant()
-                .OrderBy(p => p.Person.SearchableName)
-                .Select(o => o.ToSendableData(null, false, isAdmin))
-                .ToArrayAsync();
+                .OrderBy(p => p.Person.SearchableName);
         }
 
         if (returnTournament && tournament is null) {
             return BadRequest(new TournamentNotProvidedForReturn());
         }
 
+        if (page > 0) {
+            if (limit < 0) return BadRequest(new ActionNotAllowed("Cannot pass page without passing a limit"));
+            query = query.Skip(page * limit);
+        }
+
+        if (limit > 0) {
+            query = query.Take(limit);
+        }
+
+        var officials = await query.Select(o => o.ToSendableData(null, false, isAdmin)).ToArrayAsync();
 
         return new GetOfficialsResponse {
             Officials = officials,

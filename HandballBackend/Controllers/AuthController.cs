@@ -9,7 +9,7 @@ namespace HandballBackend.Controllers;
 
 [ApiController]
 [Route("/api/[controller]")]
-public class AuthController(IAuthorizationService authorizationService) : ControllerBase {
+public class AuthController : ControllerBase {
     public class LoginRequest {
         public required string UserID { get; set; }
         public required string Password { get; set; }

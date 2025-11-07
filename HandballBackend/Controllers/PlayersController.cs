@@ -71,7 +71,9 @@ public class PlayersController() : ControllerBase {
         [FromQuery(Name = "tournament")] string? tournamentSearchable = null,
         [FromQuery] string? team = null,
         [FromQuery] bool returnTournament = false,
-        [FromQuery] bool includeStats = false
+        [FromQuery] bool includeStats = false,
+        [FromQuery] int limit = -1,
+        [FromQuery] int page = -1
     ) {
         var db = new HandballContext();
         IQueryable<Person> query;
@@ -102,6 +104,14 @@ public class PlayersController() : ControllerBase {
         }
 
         var isAdmin = PermissionHelper.IsUmpireManager(tournament);
+        if (page > 0) {
+            if (limit < 0) return BadRequest(new ActionNotAllowed("Cannot pass page without passing a limit"));
+            query = query.Skip(page * limit);
+        }
+
+        if (limit > 0) {
+            query = query.Take(limit);
+        }
         var playerSendable = await query.OrderBy(p => p.SearchableName)
             .Where(p => !includeStats || tournament == null || !tournament.Editable || p.PlayerGameStats!.Any(pgs =>
                 pgs.TournamentId == tournament.Id))
