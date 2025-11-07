@@ -82,6 +82,12 @@ public class Tournament {
     [Column("color")]
     public required string Color { get; set; }
 
+    public List<TournamentTeam> Teams { get; set; }
+    
+    public List<PlayerGameStats> PlayerGameStats { get; set; }
+    
+    public List<TournamentOfficial> Officials { get; set; }
+    
     public async Task EndRound() {
         var finals = InFinals;
         if (!finals) {

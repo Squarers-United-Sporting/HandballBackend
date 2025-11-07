@@ -168,6 +168,86 @@ public class GamesController() : ControllerBase {
         };
     }
 
+    public record GetGamesCountResponse {
+        public int Games { get; set; }
+        public TournamentData? Tournament { get; set; }
+    }
+
+    [HttpGet("count")]
+    public async Task<ActionResult<GetGamesCountResponse>> GetGamesCount(
+        [FromQuery(Name = "tournament")] string? tournamentSearchable,
+        [FromQuery] bool includeByes = false,
+        [FromQuery] bool returnTournament = false,
+        [FromQuery(Name = "player")] List<string>? players = null,
+        [FromQuery(Name = "team")] List<string>? teams = null,
+        [FromQuery(Name = "official")] List<string>? officials = null,
+        [FromQuery] int? court = null,
+        [FromQuery] int limit = -1,
+        [FromQuery] int page = -1
+    ) {
+        var db = new HandballContext();
+
+
+        if (!Utilities.TournamentOrElse(db, tournamentSearchable, out var tournament)) {
+            return NotFound(new InvalidTournament(tournamentSearchable));
+        }
+
+        var query = db.Games.IncludeRelevant().Where(g => g.GameNumber > -2);
+        if (tournament is not null) {
+            query = query.Where(g => g.TournamentId == tournament.Id);
+        }
+
+        if (!includeByes) {
+            query = query.Where(g => !g.IsBye);
+        }
+
+        if (players is not null) {
+            foreach (var p in players) {
+                query = query.Where(g => g.Players.Select(pgs => pgs.Player.SearchableName).Contains(p));
+            }
+        }
+
+        if (teams is not null) {
+            foreach (var t in teams) {
+                query = query.Where(g => g.TeamOne.SearchableName == t || g.TeamTwo.SearchableName == t);
+            }
+        }
+
+        if (officials is not null) {
+            foreach (var p in officials) {
+                query = query.Where(g =>
+                    (g.Official != null && g.Official.Person.SearchableName == p) ||
+                    (g.Scorer != null && g.Scorer.Person.SearchableName == p));
+            }
+        }
+
+        if (court is not null) {
+            query = query.Where(g => g.Court == court);
+        }
+
+        if (page > 0) {
+            if (limit < 0) return BadRequest(new ActionNotAllowed("Cannot pass page without passing a limit"));
+            query = query.Skip(page * limit);
+        }
+
+        if (limit > 0) {
+            query = query.Take(limit);
+        }
+
+
+        var games = await query.OrderBy(g => g.Id).CountAsync();
+
+        if (returnTournament && tournament is null) {
+            return BadRequest(new TournamentNotProvidedForReturn());
+        }
+
+
+        return new GetGamesCountResponse {
+            Games = games,
+            Tournament = returnTournament ? tournament!.ToSendableData() : null
+        };
+    }
+
     public record GetNoteableResponse {
         public required GameData[] Games { get; set; }
         public TournamentData? Tournament { get; set; }
@@ -198,7 +278,7 @@ public class GamesController() : ControllerBase {
 
 
         query = query.OrderByDescending(g => g.Id);
-        
+
         if (page > 0) {
             if (limit < 0) return BadRequest(new ActionNotAllowed("Cannot pass page without passing a limit"));
             query = query.Skip(page * limit);

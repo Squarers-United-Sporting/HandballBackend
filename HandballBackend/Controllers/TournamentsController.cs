@@ -23,11 +23,32 @@ public class TournamentsController : ControllerBase {
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<ActionResult<GetTournamentsResponse>> GetManyTournaments(
         [FromQuery] int limit = -1,
-        [FromQuery] int page = -1) {
+        [FromQuery] int page = -1,
+        [FromQuery(Name = "player")] List<string>? players = null,
+        [FromQuery(Name = "team")] List<string>? teams = null,
+        [FromQuery(Name = "official")] List<string>? officials = null) {
         var db = new HandballContext();
         IQueryable<Tournament> query = db.Tournaments
             .OrderBy(t => t.Id);
-        
+
+        if (players is not null) {
+            foreach (var p in players) {
+                query = query.Where(t => t.PlayerGameStats.Any(pgs => pgs.Player.SearchableName == p));
+            }
+        }
+
+        if (teams is not null) {
+            foreach (var team in teams) {
+                query = query.Where(t => t.Teams.Any(tt => tt.Team.SearchableName == team));
+            }
+        }
+
+        if (officials is not null) {
+            foreach (var p in officials) {
+                query = query.Where(t => t.Officials.Any(o => o.Official.Person.SearchableName == p));
+            }
+        }
+
         if (page > 0) {
             if (limit < 0) return BadRequest(new ActionNotAllowed("Cannot pass page without passing a limit"));
             query = query.Skip(page * limit);
