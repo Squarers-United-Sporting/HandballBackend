@@ -32,11 +32,11 @@ public static class GameManager {
         null,
         "Served Early",
         "Didn't Go Diagonal",
-        "Out through BRA",
+        "Out of Court",
+        "Out Through BRA",
         "Double Bounce",
         "Straight",
         "Foot Fault",
-        "Incorrect Side",
         "Teammate in BRA",
     ];
 
