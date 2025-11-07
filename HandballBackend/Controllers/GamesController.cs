@@ -85,7 +85,8 @@ public class GamesController() : ControllerBase {
         [FromQuery(Name = "official")] List<string>? officials = null,
         [FromQuery] int? court = null,
         [FromQuery] bool formatData = false,
-        [FromQuery] int limit = -1
+        [FromQuery] int limit = -1,
+        [FromQuery] int page = -1
     ) {
         var db = new HandballContext();
 
@@ -131,6 +132,11 @@ public class GamesController() : ControllerBase {
 
         query = query.OrderByDescending(g => g.Id);
 
+        if (page > 0) {
+            if (limit < 0) return BadRequest(new ActionNotAllowed("Cannot pass page without passing a limit"));
+            query = query.Skip(page * limit);
+        }
+
         if (limit > 0) {
             query = query.Take(limit);
         }
@@ -175,7 +181,8 @@ public class GamesController() : ControllerBase {
         [FromQuery] bool returnTournament = false,
         [FromQuery] bool formatData = false,
         [FromQuery] bool includeStats = false,
-        [FromQuery] int limit = -1
+        [FromQuery] int limit = -1,
+        [FromQuery] int page = -1
     ) {
         var db = new HandballContext();
 
@@ -191,6 +198,11 @@ public class GamesController() : ControllerBase {
 
 
         query = query.OrderByDescending(g => g.Id);
+        
+        if (page > 0) {
+            if (limit < 0) return BadRequest(new ActionNotAllowed("Cannot pass page without passing a limit"));
+            query = query.Skip(page * limit);
+        }
 
         if (limit > 0) {
             query = query.Take(limit);

@@ -77,7 +77,9 @@ public class TeamsController : ControllerBase {
         [FromQuery] bool includeStats = false,
         [FromQuery] bool includePlayerStats = false,
         [FromQuery] bool formatData = false,
-        [FromQuery] bool returnTournament = false) {
+        [FromQuery] bool returnTournament = false,
+        [FromQuery] int limit = -1,
+        [FromQuery] int page = -1) {
         var db = new HandballContext();
 
         if (!Utilities.TournamentOrElse(db, tournamentSearchable, out var tournament)) {
@@ -105,7 +107,14 @@ public class TeamsController : ControllerBase {
                     (t.Team.Substitute != null && player.Contains(t.Team.Substitute.SearchableName))
                 );
             }
+            if (page > 0) {
+                if (limit < 0) return BadRequest(new ActionNotAllowed("Cannot pass page without passing a limit"));
+                query = query.Skip(page * limit);
+            }
 
+            if (limit > 0) {
+                query = query.Take(limit);
+            }
             teamData = await query.OrderBy(t => EF.Functions.Like(t.Team.SearchableName, "solo_%"))
                 .ThenBy(t => !EF.Functions.Like(t.Team.ImageUrl, "/api/%"))
                 .ThenBy(t => t.Team.SearchableName)
@@ -129,6 +138,14 @@ public class TeamsController : ControllerBase {
                         t.Substitute != null && p == t.Substitute.SearchableName
                     );
                 }
+            }
+            if (page > 0) {
+                if (limit < 0) return BadRequest(new ActionNotAllowed("Cannot pass page without passing a limit"));
+                query = query.Skip(page * limit);
+            }
+
+            if (limit > 0) {
+                query = query.Take(limit);
             }
 
             teamData = await query

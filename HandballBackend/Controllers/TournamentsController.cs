@@ -21,10 +21,23 @@ public class TournamentsController : ControllerBase {
 
     [HttpGet]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<ActionResult<GetTournamentsResponse>> GetManyTournaments() {
+    public async Task<ActionResult<GetTournamentsResponse>> GetManyTournaments(
+        [FromQuery] int limit = -1,
+        [FromQuery] int page = -1) {
         var db = new HandballContext();
-        var tournaments = await db.Tournaments
-            .OrderBy(t => t.Id)
+        IQueryable<Tournament> query = db.Tournaments
+            .OrderBy(t => t.Id);
+        
+        if (page > 0) {
+            if (limit < 0) return BadRequest(new ActionNotAllowed("Cannot pass page without passing a limit"));
+            query = query.Skip(page * limit);
+        }
+
+        if (limit > 0) {
+            query = query.Take(limit);
+        }
+
+        var tournaments = await query
             .Select(t => t.ToSendableData())
             .ToArrayAsync();
         return new GetTournamentsResponse {
@@ -157,6 +170,7 @@ public class TournamentsController : ControllerBase {
         if (request.HasScorer != null) {
             tournament!.HasScorer = request.HasScorer.Value;
         }
+
         if (request.TwoCourts != null) {
             tournament!.TwoCourts = request.TwoCourts.Value;
         }
