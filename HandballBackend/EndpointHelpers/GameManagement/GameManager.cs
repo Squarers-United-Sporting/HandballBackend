@@ -750,7 +750,7 @@ public static class GameManager {
 
     public static async Task<Game> CreateGame(int tournamentId, string?[]? playersTeamOne, string?[]? playersTeamTwo,
         string? teamOneName, string? teamTwoName, bool blitzGame, int officialId = -1,
-        int scorerId = -1, int round = -1, int court = 0, bool isFinal = false) {
+        int scorerId = -1, int round = -1, int court = 0, bool isFinal = false, bool sortTeams = true) {
         var db = new HandballContext();
         var allNames = (playersTeamOne ?? []).Concat(playersTeamTwo ?? []).Where(n => n != null).Cast<string>()
             .ToList();
@@ -822,19 +822,27 @@ public static class GameManager {
 
         await db.SaveChangesAsync();
         return await CreateGame(tournamentId, teams[0].Id, teams[1].Id, blitzGame, officialId, scorerId, round, court,
-            isFinal);
+            isFinal, sortTeams);
     }
 
 
     public static async Task<Game> CreateGame(int tournamentId, int teamOneId, int teamTwoId, bool blitzGame = false,
         int officialId = -1,
-        int scorerId = -1, int round = -1, int court = 0, bool isFinal = false) {
+        int scorerId = -1, int round = -1, int court = 0, bool isFinal = false, bool sortTeams = true) {
         var db = new HandballContext();
-        var oneId = teamOneId;
-        var twoId = teamTwoId;
-        var teams = await db.Teams.Where(t => t.Id == oneId || t.Id == twoId).IncludeRelevant().ToListAsync();
-        var teamOne = teams.First(t => t.Id == oneId);
-        var teamTwo = teams.First(t => t.Id == twoId);
+        if (teamOneId == 1) {
+            teamOneId = teamTwoId;
+            teamTwoId = 1;
+        } else if (sortTeams) {
+            var teamOneGamesAsFirst = await db.Games.CountAsync(g => g.TournamentId == tournamentId && g.TeamOneId == teamOneId);
+            var teamTwoGamesAsFirst = await db.Games.CountAsync(g => g.TournamentId == tournamentId && g.TeamOneId == teamTwoId);
+            if (teamOneGamesAsFirst > teamTwoGamesAsFirst) {
+                (teamOneId, teamTwoId) = (teamTwoId, teamOneId);
+            }
+        }
+        var teams = await db.Teams.Where(t => t.Id == teamOneId || t.Id == teamTwoId).IncludeRelevant().ToListAsync();
+        var teamOne = teams.First(t => t.Id == teamOneId);
+        var teamTwo = teams.First(t => t.Id == teamTwoId);
         var tournament = (await db.Tournaments.FindAsync(tournamentId))!;
         var ranked = tournament.Ranked;
         var isBye = false;
@@ -877,10 +885,7 @@ public static class GameManager {
         }
 
         court = isBye ? -1 : court;
-        if (isBye && teamOneId == 1) {
-            teamOneId = teamTwoId;
-            teamTwoId = 1;
-        }
+
 
         var gameNumber =
             isBye

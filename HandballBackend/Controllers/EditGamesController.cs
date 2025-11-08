@@ -56,7 +56,8 @@ public class EditGamesController : ControllerBase {
             create.TeamTwo,
             create.BlitzGame,
             official.Id,
-            scorer?.Id ?? -1
+            scorer?.Id ?? -1,
+            sortTeams: false
         );
 
         return Created(Config.MY_ADDRESS + $"/api/games/{g.GameNumber}", new CreateResponse {

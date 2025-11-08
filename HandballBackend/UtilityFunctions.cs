@@ -11,9 +11,9 @@ namespace HandballBackend;
 internal static class UtilityFunctions {
     public static void init() {
         Config.SECRETS_FOLDER =
-            @"C:\Users\healy\RiderProjects\HandballBackend\build\secrets";
+            @"G:\Programming\c#\HandballBackend\build\secrets";
         Config.RESOURCES_FOLDER =
-            @"C:\Users\healy\RiderProjects\HandballBackend\build\resources";
+            @"G:\Programming\c#\HandballBackend\build\resources";
     }
 
 
@@ -133,8 +133,8 @@ internal static class UtilityFunctions {
                 continue;
             }
 
-            GameManager.StartGame(i, false, null, null, true);
-            GameManager.Forfeit(i, false);
+            GameManager.StartGame(i, false, null, null, true).Wait();
+            GameManager.Forfeit(i, false).Wait();
             GameManager.End(
                 i,
                 game.Players.Select(p => p.Player.SearchableName).ToList(), 3, 3,
@@ -143,7 +143,7 @@ internal static class UtilityFunctions {
                 null,
                 "",
                 "", false
-            );
+            ).Wait();
             i++;
             game = db.Games.Include(game => game.Players).ThenInclude(playerGameStats => playerGameStats.Player)
                 .FirstOrDefault(g => g.GameNumber == i);
