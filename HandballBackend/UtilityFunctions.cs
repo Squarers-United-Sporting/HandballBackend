@@ -11,16 +11,16 @@ namespace HandballBackend;
 internal static class UtilityFunctions {
     public static void init() {
         Config.SECRETS_FOLDER =
-            @"C:\Users\healy\RiderProjects\HandballBackend\build\secrets";
+            @"G:\Programming\c#\HandballBackend\build\secrets";
         Config.RESOURCES_FOLDER =
-            @"C:\Users\healy\RiderProjects\HandballBackend\build\resources";
+            @"G:\Programming\c#\HandballBackend\build\resources";
     }
 
 
-    public static void EvilTest() {
-        init();
-        var db = new HandballContext();
-        var gE = db.GameEvents.OrderByDescending(gE => gE.Id).First();
+    private static bool ShouldExit(string action) {
+        Console.WriteLine($"Please Type 'CONFRIM' if you want to {action}:");
+        if (Console.ReadLine() != "CONFIRM") return true;
+        return false;
     }
 
     public static void RegenerateElos() {
@@ -154,8 +154,7 @@ internal static class UtilityFunctions {
     public static void ResetTournament() {
         init();
         const int tournamentId = 13;
-        Console.WriteLine($"Please Type 'CONFRIM' to confirm you want to reset the {tournamentId - 1}th tournament:");
-        if (Console.ReadLine() != "CONFIRM") return;
+        if (ShouldExit($"reset the {tournamentId - 1}th tournament")) return;
 
 
         var db = new HandballContext();
@@ -175,8 +174,7 @@ internal static class UtilityFunctions {
 
     public static void SendGroupText() {
         init();
-        Console.WriteLine("Please Type 'CONFRIM' to confirm you want to send a group text:");
-        if (Console.ReadLine() != "CONFIRM") return;
+        if (ShouldExit("send a group text")) return;
         var db = new HandballContext();
         var people = db.TournamentTeams.Where(tt => tt.TournamentId == 11).IncludeRelevant().Select(t => t.Team)
             .ToArray()
@@ -315,9 +313,9 @@ internal static class UtilityFunctions {
                 .Select(to => new AbstractFixtureGenerator.OfficialContainer {
                     PlayerId = to.Official.PersonId,
                     OfficialId = to.OfficialId,
-                    GamesUmpired = to.Official.Games.Count(g => g is { TournamentId: tournamentId, Round: < round }),
+                    GamesUmpired = to.Official.Games.Count(g => g is {TournamentId: tournamentId, Round: < round}),
                     Name = to.Official.Person.Name,
-                    GamesScored = to.Official.ScoredGames.Count(g => g is { TournamentId: tournamentId, Round: < round }),
+                    GamesScored = to.Official.ScoredGames.Count(g => g is {TournamentId: tournamentId, Round: < round}),
                     UmpireProficiency = (AbstractFixtureGenerator.UmpiringProficiencies) to.UmpireProficiency,
                     ScorerProficiency = (AbstractFixtureGenerator.UmpiringProficiencies) to.ScorerProficiency,
                 }).OrderBy(o => o.GamesUmpired).ToList();
@@ -356,7 +354,7 @@ internal static class UtilityFunctions {
         Console.WriteLine("--------------------");
         Console.WriteLine($"Success: {AbstractFixtureGenerator.TrySolution(solutionArray, officials, force: true)}");
         Console.WriteLine("--------------------");
-        foreach (var game in solutionArray.SelectMany(g => new[] { g.Item1, g.Item2 })) {
+        foreach (var game in solutionArray.SelectMany(g => new[] {g.Item1, g.Item2})) {
             if (game == null) continue;
             Console.WriteLine($"Game {game.GameId} on Court {game.CourtId + 1}");
             Console.WriteLine($"\tPlayers: {string.Join(", ", game.PlayerIds)}");
@@ -372,5 +370,50 @@ internal static class UtilityFunctions {
             Console.WriteLine(
                 $"{string.Join("\n", officialList.Select(o => $"\t{o.Name} ({o.PlayerId}) : {o.GamesUmpired}, {o.GamesScored}"))}");
         }
+    }
+
+    public static void RedoSidesForTournament() {
+        init();
+        const int tournamentId = 13;
+        if (ShouldExit($"redo the side of courts for {tournamentId - 1}th tournament")) return;
+        var db = new HandballContext();
+        var games = db.Games.Where(g => g.TournamentId == tournamentId).IncludeRelevant()
+            .Include(g => g.Events.OrderBy(gE => gE.Id))
+            .ToList();
+
+        foreach (var game in games) {
+            Console.WriteLine($"Game {game.GameNumber}");
+            var lastTeamLeft = true;
+            var teamOneScore = 0;
+            var teamTwoScore = 0;
+            foreach (var gameEvent in game.Events) {
+                var leftSide = lastTeamLeft;
+                if (gameEvent.EventType == GameEventType.Score) {
+                    if (gameEvent.TeamId == game.TeamOneId) {
+                        teamOneScore++;
+                        leftSide = teamOneScore % 2 == 0;
+                    } else {
+                        teamTwoScore++;
+                        leftSide = teamTwoScore % 2 == 0;
+                    }
+                }
+
+                if (gameEvent.EventType != GameEventType.Start) {
+                    gameEvent.SideServed = lastTeamLeft ? "Left" : "Right";
+                }
+
+                gameEvent.SideToServe = leftSide ? "Left" : "Right";
+
+                if (gameEvent.EventType == GameEventType.Score) {
+                    lastTeamLeft = leftSide;
+                }
+
+                if (gameEvent.EventType == GameEventType.EndGame) {
+                    break;
+                }
+            }
+        }
+
+        db.SaveChanges();
     }
 }
