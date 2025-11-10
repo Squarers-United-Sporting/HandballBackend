@@ -122,6 +122,7 @@ public class TournamentsController : ControllerBase {
 
         public bool HasScorer { get; set; } = true;
         public bool TwoCourts { get; set; } = true;
+        public bool BadmintonServes { get; set; } = true;
     }
 
     public class CreateTournamentResponse {
@@ -142,6 +143,7 @@ public class TournamentsController : ControllerBase {
             TwoCourts = request.TwoCourts,
             HasScorer = request.HasScorer,
             Started = false,
+            BadmintonServes = request.BadmintonServes,
             ImageUrl = "/api/image?name=SUSS",
             Color = request.Color,
         };
@@ -160,6 +162,7 @@ public class TournamentsController : ControllerBase {
         public string? Color { get; set; }
         public bool? HasScorer { get; set; }
         public bool? TwoCourts { get; set; }
+        public bool? BadmintonServes { get; set; }
     }
 
 
@@ -194,6 +197,10 @@ public class TournamentsController : ControllerBase {
 
         if (request.TwoCourts != null) {
             tournament!.TwoCourts = request.TwoCourts.Value;
+        }
+
+        if (request.BadmintonServes != null) {
+            tournament!.BadmintonServes = request.BadmintonServes.Value;
         }
 
         await db.SaveChangesAsync();
