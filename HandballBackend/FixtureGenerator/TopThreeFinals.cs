@@ -18,8 +18,7 @@ public class TopThreeFinals : AbstractFixtureGenerator {
 
         var finalsGames = await db.Games.Where(g => g.TournamentId == _tournamentId && g.IsFinal).OrderBy(g => g.Id).ToListAsync();
 
-        if (finalsGames.Count > 2) {
-            // each round is 2 games, so > 2 means we've had both rounds
+        if (finalsGames.Count > 1) {
             EndTournament();
             return true;
         }
