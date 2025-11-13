@@ -25,7 +25,7 @@ builder.Services.AddControllers().AddJsonOptions(options => {
 builder.Services.AddDbContext<HandballContext>();
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddScoped<IEncryptionService, EncryptionService>();
+builder.Services.AddSingleton<IEncryptionService, EncryptionService>();
 builder.Services.AddScoped<ICustomPermissionService, CustomPermissionService>();
 
 builder.Services.AddHttpContextAccessor();

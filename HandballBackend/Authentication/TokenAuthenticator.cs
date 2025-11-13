@@ -9,11 +9,9 @@ using Microsoft.Extensions.Options;
 namespace HandballBackend.Authentication;
 
 public class TokenAuthenticator : AuthenticationHandler<AuthenticationSchemeOptions> {
-    private readonly CustomPermissionService _permissions;
 
     public TokenAuthenticator(IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger,
-        UrlEncoder encoder, CustomPermissionService permissions) : base(options, logger, encoder) {
-        _permissions = permissions;
+        UrlEncoder encoder) : base(options, logger, encoder) {
     }
 
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync() {
@@ -21,8 +19,10 @@ public class TokenAuthenticator : AuthenticationHandler<AuthenticationSchemeOpti
             return AuthenticateResult.NoResult();
         }
 
+        var permissions = ServiceLocator.Get<ICustomPermissionService>();
+
         var token = Request.Headers.Authorization.ToString().Split(" ")[1];
-        var person = _permissions.PersonByToken(token);
+        var person = permissions.PersonByToken(token);
 
         if (person == null || person.TokenTimeout < Utilities.GetUnixSeconds()) {
             return AuthenticateResult.Fail("Invalid Token");
