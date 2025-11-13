@@ -74,7 +74,7 @@ public class OfficialsControllerTest {
     [TestMethod]
     public async Task TestGetOneOfficialBadTournamentName() {
         var db = new HandballContext();
-        var controller = new OfficialsController(db);
+        var controller = new OfficialsController(db, ne);
         var response = (await controller.GetOneOfficial("foo", "a_name_not_existing")).Result;
         Assert.IsNotNull(response);
         var actual = response as NotFoundObjectResult;

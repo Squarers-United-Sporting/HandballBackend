@@ -48,7 +48,7 @@ public static class TextHelper {
 
     public static async Task<bool> TextTournamentStaff(Game game) {
         var tasks = new List<Task<bool>>();
-        var db = new HandballContext();
+        await using var db = new HandballContext();
         var tournamentOfficials =
             await db.TournamentOfficials.Where(to => to.TournamentId == game.TournamentId).IncludeRelevant()
                 .ToListAsync();

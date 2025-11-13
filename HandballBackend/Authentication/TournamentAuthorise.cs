@@ -10,15 +10,17 @@ public class TournamentAuthorizeAttribute : Attribute, IAuthorizationFilter {
     private readonly PermissionType _requiredRole;
     private readonly string _routeKey;
 
-    public TournamentAuthorizeAttribute(PermissionType requiredRole, string routeKey = "searchable") {
+    public TournamentAuthorizeAttribute(PermissionType requiredRole,
+        string routeKey = "searchable") {
         _requiredRole = requiredRole;
         _routeKey = routeKey;
     }
 
     public void OnAuthorization(AuthorizationFilterContext context) {
-        var db = new HandballContext();
+        using var db = new HandballContext();
+        var permission = ServiceLocator.Get<ICustomPermissionService>();
         var token = context.HttpContext.User.Claims.First(c => c.Type == CustomClaimTypes.Token).Value;
-        var person = PermissionHelper.PersonByToken(token);
+        var person = permission.PersonByToken(token);
 
         if (person is null) {
             context.Result = new UnauthorizedResult();
@@ -27,13 +29,13 @@ public class TournamentAuthorizeAttribute : Attribute, IAuthorizationFilter {
 
         var tournamentSearch = context.HttpContext.Request.Query["tournament"].FirstOrDefault();
         if (tournamentSearch is null) {
-
             if (!context.RouteData.Values.TryGetValue(_routeKey, out var rawSearchable) ||
                 rawSearchable is not string searchable) {
                 //this is not a tournament-specific request
                 if (person.PermissionLevel.ToInt() < _requiredRole.ToInt()) {
                     context.Result = new ForbidResult();
                 }
+
                 return;
             } else {
                 tournamentSearch = searchable;

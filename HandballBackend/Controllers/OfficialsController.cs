@@ -11,7 +11,7 @@ namespace HandballBackend.Controllers;
 
 [ApiController]
 [Route("/api/[controller]")]
-public class OfficialsController(HandballContext db) : ControllerBase {
+public class OfficialsController(HandballContext db, ICustomPermissionService permission) : ControllerBase {
     public record GetOfficialsResponse {
         public required OfficialData[] Officials { get; set; }
         public TournamentData? Tournament { get; set; }
@@ -33,7 +33,7 @@ public class OfficialsController(HandballContext db) : ControllerBase {
             return NotFound(new InvalidTournament(tournamentSearchable));
         }
 
-        var isAdmin = PermissionHelper.IsUmpireManager(tournament);
+        var isAdmin = permission.IsUmpireManager(tournament);
 
         if (tournament is not null) {
             query = db.TournamentOfficials
@@ -95,7 +95,7 @@ public class OfficialsController(HandballContext db) : ControllerBase {
             return NotFound(new InvalidTournament(tournamentSearchable));
         }
 
-        var isAdmin = PermissionHelper.IsUmpireManager(tournament);
+        var isAdmin = permission.IsUmpireManager(tournament);
 
 
         if (returnTournament && tournament is null) {
@@ -188,7 +188,7 @@ public class OfficialsController(HandballContext db) : ControllerBase {
             return BadRequest("The Official doesn't exist");
         }
 
-        if (tournamentOfficial.Role.ToPermissionType() >= PermissionHelper.GetRequestPermissions(tournament)) {
+        if (tournamentOfficial.Role.ToPermissionType() >= permission.GetRequestPermissions(tournament)) {
             return Forbid("You cannot delete someone with permissions higher than your own!");
         }
 
@@ -239,11 +239,11 @@ public class OfficialsController(HandballContext db) : ControllerBase {
 
         if (request.Role != null) {
             if (Enum.TryParse<OfficialRole>(request.Role.Replace(" ", ""), out var role)) {
-                if (tournamentOfficial.Role.ToPermissionType() >= PermissionHelper.GetRequestPermissions(tournament)) {
+                if (tournamentOfficial.Role.ToPermissionType() >= permission.GetRequestPermissions(tournament)) {
                     return Forbid("You cannot set permissions of someone who is higher than your own!");
                 }
 
-                if (role.ToPermissionType() >= PermissionHelper.GetRequestPermissions(tournament)) {
+                if (role.ToPermissionType() >= permission.GetRequestPermissions(tournament)) {
                     return Forbid("You cannot set permissions higher than your own!");
                 }
 

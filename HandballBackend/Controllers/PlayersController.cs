@@ -11,7 +11,7 @@ namespace HandballBackend.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class PlayersController(HandballContext db) : ControllerBase {
+public class PlayersController(HandballContext db, ICustomPermissionService permission) : ControllerBase {
     public record GetPlayerResponse {
         public required PersonData Player { get; set; }
         public TournamentData? Tournament { get; set; }
@@ -32,7 +32,7 @@ public class PlayersController(HandballContext db) : ControllerBase {
             return NotFound(new InvalidTournament(tournamentSearchable));
         }
 
-        var isAdmin = PermissionHelper.IsUmpireManager(tournament);
+        var isAdmin = permission.IsUmpireManager(tournament);
 
         var player = await db.People
             .Where(t => t.SearchableName == searchable)
@@ -101,7 +101,7 @@ public class PlayersController(HandballContext db) : ControllerBase {
                 .Where(p => p.SearchableName != "worstie");
         }
 
-        var isAdmin = PermissionHelper.IsUmpireManager(tournament);
+        var isAdmin = permission.IsUmpireManager(tournament);
         if (page > 0) {
             if (limit < 0) return BadRequest(new ActionNotAllowed("Cannot pass page without passing a limit"));
             query = query.Skip(page * limit);

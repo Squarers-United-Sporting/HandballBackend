@@ -21,7 +21,7 @@ public class GoogleImagesHelper {
     }
 
     public static async Task<bool> SetTeamImageUrl(string searchableName) {
-        var db = new HandballContext();
+        await using var db = new HandballContext();
         var team = db.Teams.FirstOrDefault(t => t.SearchableName == searchableName);
         if (team == null)
             return false;

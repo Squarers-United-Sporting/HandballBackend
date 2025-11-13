@@ -12,7 +12,7 @@ namespace HandballBackend.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class GamesController(HandballContext db) : ControllerBase {
+public class GamesController(HandballContext db, ICustomPermissionService permission) : ControllerBase {
     public record ChangeCodeResponse {
         public int Code { get; set; }
     }
@@ -52,7 +52,7 @@ public class GamesController(HandballContext db) : ControllerBase {
             return NotFound(new DoesNotExist("Game", gameNumber.ToString()));
         }
 
-        var isUmpire = PermissionHelper.IsUmpire(game);
+        var isUmpire = permission.IsUmpire(game);
         var cards = db.GameEvents.Where(gE =>
             gE.TournamentId == game.TournamentId
             && GameEvent.CardTypes.Contains(gE.EventType)
@@ -97,7 +97,7 @@ public class GamesController(HandballContext db) : ControllerBase {
             query = query.Where(g => g.TournamentId == tournament.Id);
         }
 
-        var isAdmin = PermissionHelper.IsUmpireManager(tournament);
+        var isAdmin = permission.IsUmpireManager(tournament);
         if (!includeByes) {
             query = query.Where(g => !g.IsBye);
         }
@@ -315,7 +315,7 @@ public class GamesController(HandballContext db) : ControllerBase {
             return NotFound(new InvalidTournament(tournamentSearchable));
         }
 
-        var isAdmin = PermissionHelper.IsUmpireManager(tournament);
+        var isAdmin = permission.IsUmpireManager(tournament);
 
 
         var query = db.Games.Where(g => g.GameNumber > -2 && g.TournamentId == tournament!.Id).IncludeRelevant()
@@ -324,7 +324,7 @@ public class GamesController(HandballContext db) : ControllerBase {
         query = query.OrderBy(g => g.Id);
 
 
-        var isUmpire = PermissionHelper.IsUmpireManager(tournament);
+        var isUmpire = permission.IsUmpireManager(tournament);
         var games = await query.Select(g => g.ToSendableData(false, false, false, false, isUmpire, isAdmin))
             .ToArrayAsync();
 

@@ -53,7 +53,7 @@ public class TournamentOfficial : IHasRelevant<TournamentOfficial> {
     [NotMapped]
     public int GamesUmpired {
         get {
-            var db = new HandballContext();
+            using var db = new HandballContext();
             return db.Games.Count(g => g.TournamentId == TournamentId && g.OfficialId == OfficialId);
         }
     }
@@ -61,7 +61,7 @@ public class TournamentOfficial : IHasRelevant<TournamentOfficial> {
     [NotMapped]
     public int CourtOneGamesUmpired {
         get {
-            var db = new HandballContext();
+            using var db = new HandballContext();
             return db.Games.Count(g => g.Court == 0 && g.TournamentId == TournamentId && g.OfficialId == OfficialId);
         }
     }
@@ -69,7 +69,7 @@ public class TournamentOfficial : IHasRelevant<TournamentOfficial> {
     [NotMapped]
     public int CourtTwoGamesUmpired {
         get {
-            var db = new HandballContext();
+            using var db = new HandballContext();
             return db.Games.Count(g => g.Court == 1 && g.TournamentId == TournamentId && g.OfficialId == OfficialId);
         }
     }
@@ -77,7 +77,7 @@ public class TournamentOfficial : IHasRelevant<TournamentOfficial> {
     [NotMapped]
     public int GamesScored {
         get {
-            var db = new HandballContext();
+            using var db = new HandballContext();
             return db.Games.Count(g => g.TournamentId == TournamentId && g.ScorerId == OfficialId);
         }
     }

@@ -3,6 +3,7 @@ using HandballBackend.Arguments;
 using HandballBackend.Authentication;
 using HandballBackend.Converters;
 using HandballBackend.Database.Models;
+using HandballBackend.EndpointHelpers;
 using HandballBackend.ErrorTypes;
 using HandballBackend.Utils;
 using Microsoft.AspNetCore.Authentication;
@@ -23,6 +24,10 @@ builder.Services.AddControllers().AddJsonOptions(options => {
 });
 builder.Services.AddDbContext<HandballContext>();
 builder.Services.AddSwaggerGen();
+
+builder.Services.AddScoped<IEncryptionService, EncryptionService>();
+builder.Services.AddScoped<ICustomPermissionService, CustomPermissionService>();
+
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpLogging(o => { });
 builder.Services.AddAuthentication(options => {
@@ -42,6 +47,7 @@ builder.Services.AddDbContext<HandballContext>();
 ArgsHandler.Parse(args, builder);
 
 var app = builder.Build();
+ServiceLocator.Init(app.Services);
 
 
 // Configure the HTTP request pipeline.

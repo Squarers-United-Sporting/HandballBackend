@@ -64,7 +64,7 @@ public static class ImageHelper {
     }
 
     public static async Task SetGoogleImageForTeam(int teamId) {
-        var db = new HandballContext();
+        await using var db = new HandballContext();
         var team = (await db.Teams.FindAsync(teamId))!;
         var imageLink = await GetGoogleImageUrl(team.Name);
         if (imageLink == null)

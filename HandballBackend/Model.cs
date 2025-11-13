@@ -74,8 +74,8 @@ public class HandballContext : DbContext {
             .Entity<Person>()
             .Property(e => e.PhoneNumber)
             .HasConversion(
-                v => v == null ? null : EncryptionHelper.Encrypt(v),
-                v => v == null ? null : EncryptionHelper.Decrypt(v));
+                v => v == null ? null : ServiceLocator.Get<IEncryptionService>().Encrypt(v),
+                v => v == null ? null : ServiceLocator.Get<IEncryptionService>().Decrypt(v));
         modelBuilder
             .Entity<GameEvent>()
             .HasOne(gE => gE.Player)

@@ -94,7 +94,7 @@ public static class PostgresBackup {
 
     private static async Task<Dictionary<string, long>> GetLengthFromDatabase() {
         var dict = new Dictionary<string, long>();
-        var db = new HandballContext();
+        await using var db = new HandballContext();
         dict[nameof(db.GameEvents)] = await db.GameEvents.LongCountAsync();
         dict[nameof(db.Games)] = await db.Games.LongCountAsync();
         dict[nameof(db.Officials)] = await db.Officials.LongCountAsync();

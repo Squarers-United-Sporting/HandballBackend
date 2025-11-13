@@ -104,16 +104,6 @@ internal static class UtilityFunctions {
         db.SaveChanges();
     }
 
-    public static void EncryptString() {
-        string? x;
-        do {
-            Console.WriteLine("Enter the target string");
-            x = Console.ReadLine();
-            if (x != null && x != "x") {
-                Console.WriteLine(EncryptionHelper.Encrypt(x));
-            }
-        } while (x != "x");
-    }
 
 
     public static void ForceForfeitTournament() {

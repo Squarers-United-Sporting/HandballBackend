@@ -100,7 +100,7 @@ public class Tournament {
     }
 
     public async Task BeginTournament() {
-        var db = new HandballContext();
+        await using var db = new HandballContext();
         (await db.Tournaments.FindAsync(Id))!.Started = true;
         await db.SaveChangesAsync();
         await GetFixtureGenerator.BeginTournament();
@@ -116,7 +116,7 @@ public class Tournament {
 
 
     public IQueryable<Person> GetPeopleInTournament() {
-        var db = new HandballContext();
+        using var db = new HandballContext();
         var captainIds = db
             .TournamentTeams.Where(tt => tt.TournamentId == Id)
             .Select(tt => tt.Team.CaptainId);

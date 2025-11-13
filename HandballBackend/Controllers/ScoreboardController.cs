@@ -53,7 +53,7 @@ public class ScoreboardController : ControllerBase {
     }
 
     private static async Task SocketSendUpdate(WebSocket socket, int gameId) {
-        var db = new HandballContext();
+        await using var db = new HandballContext();
         var game = db.Games
             .IncludeRelevant()
             .Include(g => g.Events)

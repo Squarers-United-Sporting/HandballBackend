@@ -12,7 +12,7 @@ namespace HandballBackend.Controllers;
 [Authorize]
 [ApiController]
 [Route("api/games/update")]
-public class EditGamesController(HandballContext db) : ControllerBase {
+public class EditGamesController(HandballContext db, ICustomPermissionService permission) : ControllerBase {
     public class CreateRequest {
         public required string Tournament { get; init; }
         public string? TeamOne { get; set; } = null;
@@ -37,7 +37,7 @@ public class EditGamesController(HandballContext db) : ControllerBase {
             return NotFound(new InvalidTournament(create.Tournament));
         }
 
-        if (!PermissionHelper.IsUmpire(tournament)) {
+        if (!permission.IsUmpire(tournament)) {
             return Forbid();
         }
 
@@ -81,7 +81,7 @@ public class EditGamesController(HandballContext db) : ControllerBase {
     public async Task<IActionResult> StartGame(
         [FromBody] StartRequest startRequest
     ) {
-        if (!PermissionHelper.IsUmpire(new HandballContext().Games.First(g => g.GameNumber == startRequest.Id))) {
+        if (!permission.IsUmpire(db.Games.First(g => g.GameNumber == startRequest.Id))) {
             return Forbid();
         }
 
@@ -104,7 +104,7 @@ public class EditGamesController(HandballContext db) : ControllerBase {
     [HttpPost("score")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> ScorePointForGame([FromBody] ScorePointRequest scorePointRequest) {
-        if (!PermissionHelper.IsUmpire(new HandballContext().Games.First(g => g.GameNumber == scorePointRequest.Id))) {
+        if (!permission.IsUmpire(db.Games.First(g => g.GameNumber == scorePointRequest.Id))) {
             return Forbid();
         }
 
@@ -133,7 +133,7 @@ public class EditGamesController(HandballContext db) : ControllerBase {
     [HttpPost("merit")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> MeritForGame([FromBody] MeritRequest meritRequest) {
-        if (!PermissionHelper.IsUmpire(new HandballContext().Games.First(g => g.GameNumber == meritRequest.Id))) {
+        if (!permission.IsUmpire(db.Games.First(g => g.GameNumber == meritRequest.Id))) {
             return Forbid();
         }
 
@@ -162,7 +162,7 @@ public class EditGamesController(HandballContext db) : ControllerBase {
     [HttpPost("demerit")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> DemeritForGame([FromBody] DemeritRequest demeritRequest) {
-        if (!PermissionHelper.IsUmpire(new HandballContext().Games.First(g => g.GameNumber == demeritRequest.Id))) {
+        if (!permission.IsUmpire(db.Games.First(g => g.GameNumber == demeritRequest.Id))) {
             return Forbid();
         }
 
@@ -194,7 +194,7 @@ public class EditGamesController(HandballContext db) : ControllerBase {
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> CardForGame([FromBody] CardRequest cardRequest) {
-        if (!PermissionHelper.IsUmpire(new HandballContext().Games.First(g => g.GameNumber == cardRequest.Id))) {
+        if (!permission.IsUmpire(db.Games.First(g => g.GameNumber == cardRequest.Id))) {
             return Forbid();
         }
 
@@ -222,7 +222,7 @@ public class EditGamesController(HandballContext db) : ControllerBase {
     [HttpPost("ace")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> AceForGame([FromBody] AceRequest aceRequest) {
-        if (!PermissionHelper.IsUmpire(new HandballContext().Games.First(g => g.GameNumber == aceRequest.Id))) {
+        if (!permission.IsUmpire(db.Games.First(g => g.GameNumber == aceRequest.Id))) {
             return Forbid();
         }
 
@@ -238,7 +238,7 @@ public class EditGamesController(HandballContext db) : ControllerBase {
     [HttpPost("fault")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> FaultForGame([FromBody] FaultRequest faultRequest) {
-        if (!PermissionHelper.IsUmpire(new HandballContext().Games.First(g => g.GameNumber == faultRequest.Id))) {
+        if (!permission.IsUmpire(db.Games.First(g => g.GameNumber == faultRequest.Id))) {
             return Forbid();
         }
 
@@ -254,7 +254,7 @@ public class EditGamesController(HandballContext db) : ControllerBase {
     [HttpPost("timeout")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> TimeoutForGame([FromBody] TimeoutRequest timeoutRequest) {
-        if (!PermissionHelper.IsUmpire(new HandballContext().Games.First(g => g.GameNumber == timeoutRequest.Id))) {
+        if (!permission.IsUmpire(db.Games.First(g => g.GameNumber == timeoutRequest.Id))) {
             return Forbid();
         }
 
@@ -270,7 +270,7 @@ public class EditGamesController(HandballContext db) : ControllerBase {
     [HttpPost("forfeit")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> ForfeitGame([FromBody] ForfeitRequest forfeitRequest) {
-        if (!PermissionHelper.IsUmpire(new HandballContext().Games.First(g => g.GameNumber == forfeitRequest.Id))) {
+        if (!permission.IsUmpire(db.Games.First(g => g.GameNumber == forfeitRequest.Id))) {
             return Forbid();
         }
 
@@ -362,7 +362,7 @@ public class EditGamesController(HandballContext db) : ControllerBase {
     [HttpPost("end")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> EndGame([FromBody] EndGameRequest endGameRequest) {
-        if (!PermissionHelper.IsUmpire(new HandballContext().Games.First(g => g.GameNumber == endGameRequest.Id))) {
+        if (!permission.IsUmpire(db.Games.First(g => g.GameNumber == endGameRequest.Id))) {
             return Forbid();
         }
 
@@ -389,8 +389,8 @@ public class EditGamesController(HandballContext db) : ControllerBase {
     [HttpPost("alert")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public IActionResult AlertGame([FromBody] AlertRequest alertRequest) {
-        if (!PermissionHelper.IsUmpireManager(
-                new HandballContext().Games.First(g => g.GameNumber == alertRequest.Id))) {
+        if (!permission.IsUmpireManager(
+                db.Games.First(g => g.GameNumber == alertRequest.Id))) {
             return Forbid();
         }
 
@@ -406,8 +406,8 @@ public class EditGamesController(HandballContext db) : ControllerBase {
     [HttpPost("resolve")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> ResolveGame([FromBody] ResolveRequest resolveRequest) {
-        if (!PermissionHelper.IsUmpireManager(
-                new HandballContext().Games.First(g => g.GameNumber == resolveRequest.Id))) {
+        if (!permission.IsUmpireManager(
+                db.Games.First(g => g.GameNumber == resolveRequest.Id))) {
             return Forbid();
         }
 
@@ -422,7 +422,7 @@ public class EditGamesController(HandballContext db) : ControllerBase {
     [HttpPost("replay")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> ReplayForGame([FromBody] ReplayRequest replayRequest) {
-        if (!PermissionHelper.IsUmpire(new HandballContext().Games.First(g => g.GameNumber == replayRequest.Id))) {
+        if (!permission.IsUmpire(db.Games.First(g => g.GameNumber == replayRequest.Id))) {
             return Forbid();
         }
 

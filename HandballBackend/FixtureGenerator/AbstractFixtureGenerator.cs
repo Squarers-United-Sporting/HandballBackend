@@ -89,7 +89,7 @@ public abstract class AbstractFixtureGenerator(int tournamentId, bool fillOffici
 
     protected void EndTournament(
         string note = "Thank you for participating in the tournament! We look forward to seeing you next time.") {
-        var db = new HandballContext();
+        using var db = new HandballContext();
         var tournament = db.Tournaments.Find(tournamentId)!;
         tournament.Finished = true;
         tournament.Notes = note;
@@ -98,14 +98,14 @@ public abstract class AbstractFixtureGenerator(int tournamentId, bool fillOffici
     }
 
     public virtual async Task BeginTournament() {
-        var db = new HandballContext();
+        await using var db = new HandballContext();
         await EndOfRound();
         await db.SaveChangesAsync();
     }
 
 
     internal async Task AddCourts(int rounds = -1) {
-        var db = new HandballContext();
+        await using var db = new HandballContext();
         // Get the highest round number
 
         if (rounds == -1) {
@@ -178,7 +178,7 @@ public abstract class AbstractFixtureGenerator(int tournamentId, bool fillOffici
     }
 
     private async Task AddUmpires() {
-        var db = new HandballContext();
+        await using var db = new HandballContext();
         var games = await db.Games.Where(g => g.TournamentId == tournamentId && !g.Started && !g.IsBye)
             .IncludeRelevant().ToListAsync();
         if (games.Count <= 0) return;
