@@ -11,7 +11,7 @@ namespace HandballBackend.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class TeamsController : ControllerBase {
+public class TeamsController(HandballContext db) : ControllerBase {
     public record GetTeamResponse {
         public required TeamData Team { get; set; }
         public TournamentData? Tournament { get; set; }
@@ -25,8 +25,6 @@ public class TeamsController : ControllerBase {
         [FromQuery(Name = "tournament")] string? tournamentSearchable = null,
         [FromQuery] bool formatData = false,
         [FromQuery] bool returnTournament = false) {
-        var db = new HandballContext();
-
         if (!Utilities.TournamentOrElse(db, tournamentSearchable, out var tournament)) {
             return NotFound(new InvalidTournament(tournamentSearchable));
         }
@@ -80,8 +78,6 @@ public class TeamsController : ControllerBase {
         [FromQuery] bool returnTournament = false,
         [FromQuery] int limit = -1,
         [FromQuery] int page = -1) {
-        var db = new HandballContext();
-
         if (!Utilities.TournamentOrElse(db, tournamentSearchable, out var tournament)) {
             return NotFound(new InvalidTournament(tournamentSearchable));
         }
@@ -107,6 +103,7 @@ public class TeamsController : ControllerBase {
                     (t.Team.Substitute != null && player.Contains(t.Team.Substitute.SearchableName))
                 );
             }
+
             if (page > 0) {
                 if (limit < 0) return BadRequest(new ActionNotAllowed("Cannot pass page without passing a limit"));
                 query = query.Skip(page * limit);
@@ -115,6 +112,7 @@ public class TeamsController : ControllerBase {
             if (limit > 0) {
                 query = query.Take(limit);
             }
+
             teamData = await query.OrderBy(t => EF.Functions.Like(t.Team.SearchableName, "solo_%"))
                 .ThenBy(t => !EF.Functions.Like(t.Team.ImageUrl, "/api/%"))
                 .ThenBy(t => t.Team.SearchableName)
@@ -139,6 +137,7 @@ public class TeamsController : ControllerBase {
                     );
                 }
             }
+
             if (page > 0) {
                 if (limit < 0) return BadRequest(new ActionNotAllowed("Cannot pass page without passing a limit"));
                 query = query.Skip(page * limit);
@@ -180,8 +179,6 @@ public class TeamsController : ControllerBase {
         [FromQuery(Name = "tournament")] string? tournamentSearchable = null,
         [FromQuery] bool formatData = false,
         [FromQuery] bool returnTournament = false) {
-        var db = new HandballContext();
-
         TeamData[]? ladder;
         TeamData[]? poolOne = null;
         TeamData[]? poolTwo = null;
@@ -246,8 +243,6 @@ public class TeamsController : ControllerBase {
     public async Task<ActionResult<GetStandingsResult>> GetStandings(
         [FromQuery(Name = "tournament")] string tournamentSearchable,
         [FromQuery] bool returnTournament = false) {
-        var db = new HandballContext();
-
         if (!Utilities.TournamentOrElse(db, tournamentSearchable, out var tournament) || tournament is null) {
             return NotFound(new InvalidTournament(tournamentSearchable));
         }
@@ -291,7 +286,6 @@ public class TeamsController : ControllerBase {
     [TournamentAuthorize(PermissionType.UmpireManager)]
     public async Task<ActionResult<AddTeamResponse>> AddTeamToTournament(
         [FromBody] AddTeamRequest request) {
-        var db = new HandballContext();
         var tournament = db.Tournaments
             .FirstOrDefault(a => a.SearchableName == request.Tournament);
         if (tournament is null) {
@@ -378,7 +372,6 @@ public class TeamsController : ControllerBase {
     [TournamentAuthorize(PermissionType.UmpireManager)]
     public async Task<ActionResult<UpdateTeamResponse>> UpdateTeamForTournament(
         [FromBody] UpdateTeamRequest request) {
-        var db = new HandballContext();
         var tournament = await db.Tournaments
             .FirstOrDefaultAsync(a => a.SearchableName == request.Tournament);
         if (tournament is null) {
@@ -431,7 +424,6 @@ public class TeamsController : ControllerBase {
     [HttpDelete("removeFromTournament")]
     [TournamentAuthorize(PermissionType.UmpireManager)]
     public async Task<ActionResult> RemoveTeamFromTournament([FromBody] RemoveTeamRequest request) {
-        var db = new HandballContext();
         var tournament = await db.Tournaments
             .FirstOrDefaultAsync(a => a.SearchableName == request.Tournament);
         if (tournament is null) {

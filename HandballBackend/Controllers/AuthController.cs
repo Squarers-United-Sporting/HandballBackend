@@ -9,7 +9,7 @@ namespace HandballBackend.Controllers;
 
 [ApiController]
 [Route("/api/[controller]")]
-public class AuthController : ControllerBase {
+public class AuthController(HandballContext db) : ControllerBase {
     public class LoginRequest {
         public required string UserID { get; set; }
         public required string Password { get; set; }
@@ -32,7 +32,6 @@ public class AuthController : ControllerBase {
     public ActionResult<LoginResponse> Login(
         [FromBody] LoginRequest loginRequest
     ) {
-        var db = new HandballContext();
         var userString = loginRequest.UserID;
         var userId = int.TryParse(userString, out var result)
             ? result

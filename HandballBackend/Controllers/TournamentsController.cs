@@ -14,7 +14,7 @@ namespace HandballBackend.Controllers;
 
 [ApiController]
 [Route("/api/[controller]")]
-public class TournamentsController : ControllerBase {
+public class TournamentsController(HandballContext db) : ControllerBase {
     public record GetTournamentsResponse {
         public required TournamentData[] Tournaments { get; set; }
     }
@@ -27,7 +27,6 @@ public class TournamentsController : ControllerBase {
         [FromQuery(Name = "player")] List<string>? players = null,
         [FromQuery(Name = "team")] List<string>? teams = null,
         [FromQuery(Name = "official")] List<string>? officials = null) {
-        var db = new HandballContext();
         IQueryable<Tournament> query = db.Tournaments
             .OrderBy(t => t.Id);
 
@@ -72,7 +71,6 @@ public class TournamentsController : ControllerBase {
 
     [HttpGet("{searchable}")]
     public async Task<ActionResult<GetTournamentResponse>> GetOneTournament(string searchable) {
-        var db = new HandballContext();
         var tournament = await db.Tournaments
             .FirstOrDefaultAsync(a => a.SearchableName == searchable);
         if (tournament is null) {
@@ -88,7 +86,6 @@ public class TournamentsController : ControllerBase {
     [HttpPost("{searchable}/start")]
     [TournamentAuthorize(PermissionType.UmpireManager)]
     public async Task<ActionResult> StartTournament(string searchable) {
-        var db = new HandballContext();
         var tournament = await db.Tournaments
             .FirstOrDefaultAsync(a => a.SearchableName == searchable);
         if (tournament is null) {
@@ -102,7 +99,6 @@ public class TournamentsController : ControllerBase {
     [HttpPost("{searchable}/finalsNextRound")]
     [TournamentAuthorize(PermissionType.UmpireManager)]
     public async Task<ActionResult> PutTournamentInFinals(string searchable) {
-        var db = new HandballContext();
         var tournament = await db.Tournaments
             .FirstOrDefaultAsync(a => a.SearchableName == searchable);
         if (tournament is null) {
@@ -132,7 +128,6 @@ public class TournamentsController : ControllerBase {
     [HttpPost("create")]
     [Authorize(Policy = Policies.IsAdmin)]
     public async Task<ActionResult> CreateTournament([FromBody] CreateTournamentRequest request) {
-        var db = new HandballContext();
         var tournament = new Tournament {
             Name = request.Name,
             SearchableName = Utilities.ToSearchable(request.Name),
@@ -169,8 +164,6 @@ public class TournamentsController : ControllerBase {
     [HttpPost("update")]
     [Authorize(Policy = Policies.IsAdmin)]
     public async Task<ActionResult> UpdateTournament([FromBody] UpdateTournamentRequest request) {
-        var db = new HandballContext();
-
         if (!Utilities.TournamentOrElse(db, request.Tournament, out var tournament)) {
             return NotFound(new InvalidTournament($"The Tournament {request.Tournament} does not exist"));
         }

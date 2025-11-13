@@ -11,7 +11,7 @@ namespace HandballBackend.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class PlayersController() : ControllerBase {
+public class PlayersController(HandballContext db) : ControllerBase {
     public record GetPlayerResponse {
         public required PersonData Player { get; set; }
         public TournamentData? Tournament { get; set; }
@@ -28,7 +28,6 @@ public class PlayersController() : ControllerBase {
         [FromQuery(Name = "tournament")] string? tournamentSearchable = null,
         [FromQuery] bool returnTournament = false
     ) {
-        var db = new HandballContext();
         if (!Utilities.TournamentOrElse(db, tournamentSearchable, out var tournament)) {
             return NotFound(new InvalidTournament(tournamentSearchable));
         }
@@ -75,7 +74,6 @@ public class PlayersController() : ControllerBase {
         [FromQuery] int limit = -1,
         [FromQuery] int page = -1
     ) {
-        var db = new HandballContext();
         IQueryable<Person> query;
         Team? teamObj = null;
 
@@ -139,7 +137,6 @@ public class PlayersController() : ControllerBase {
         [FromQuery(Name = "tournament")] string? tournamentSearchable = null,
         [FromQuery] bool returnTournament = false,
         [FromQuery] int? gameNumber = null) {
-        var db = new HandballContext();
         if (!Utilities.TournamentOrElse(db, tournamentSearchable, out var tournament)) {
             return NotFound(new InvalidTournament(tournamentSearchable));
         }

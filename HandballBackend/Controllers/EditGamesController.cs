@@ -12,7 +12,7 @@ namespace HandballBackend.Controllers;
 [Authorize]
 [ApiController]
 [Route("api/games/update")]
-public class EditGamesController : ControllerBase {
+public class EditGamesController(HandballContext db) : ControllerBase {
     public class CreateRequest {
         public required string Tournament { get; init; }
         public string? TeamOne { get; set; } = null;
@@ -33,7 +33,6 @@ public class EditGamesController : ControllerBase {
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> CreateGame([FromBody] CreateRequest create) {
-        var db = new HandballContext();
         if (!Utilities.TournamentOrElse(db, create.Tournament, out var tournament)) {
             return NotFound(new InvalidTournament(create.Tournament));
         }
@@ -395,7 +394,6 @@ public class EditGamesController : ControllerBase {
             return Forbid();
         }
 
-        var db = new HandballContext();
         var game = db.Games.IncludeRelevant().First(g => alertRequest.Id == g.GameNumber);
         _ = TextHelper.TextPeopleForGame(game);
         return NoContent();

@@ -12,7 +12,7 @@ namespace HandballBackend.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class GamesController() : ControllerBase {
+public class GamesController(HandballContext db) : ControllerBase {
     public record ChangeCodeResponse {
         public int Code { get; set; }
     }
@@ -21,7 +21,6 @@ public class GamesController() : ControllerBase {
     public ActionResult<ChangeCodeResponse> GetChangeCode(
         [FromQuery(Name = "id")] int gameNumber
     ) {
-        var db = new HandballContext();
         var query = db.GameEvents.Where(gE => gE.Game.GameNumber == gameNumber).OrderByDescending(gE => gE.Id)
             .Select(gE => gE.Id).FirstOrDefault();
 
@@ -41,7 +40,6 @@ public class GamesController() : ControllerBase {
         [FromQuery] bool includeStats = false,
         [FromQuery] bool formatData = false
     ) {
-        var db = new HandballContext();
         var isAdmin = HttpContext.User.IsInRole(nameof(PermissionType.UmpireManager));
 
         var game = db.Games
@@ -88,8 +86,6 @@ public class GamesController() : ControllerBase {
         [FromQuery] int limit = -1,
         [FromQuery] int page = -1
     ) {
-        var db = new HandballContext();
-
 
         if (!Utilities.TournamentOrElse(db, tournamentSearchable, out var tournament)) {
             return NotFound(new InvalidTournament(tournamentSearchable));
@@ -185,9 +181,6 @@ public class GamesController() : ControllerBase {
         [FromQuery] int limit = -1,
         [FromQuery] int page = -1
     ) {
-        var db = new HandballContext();
-
-
         if (!Utilities.TournamentOrElse(db, tournamentSearchable, out var tournament)) {
             return NotFound(new InvalidTournament(tournamentSearchable));
         }
@@ -264,8 +257,6 @@ public class GamesController() : ControllerBase {
         [FromQuery] int limit = -1,
         [FromQuery] int page = -1
     ) {
-        var db = new HandballContext();
-
         if (!Utilities.TournamentOrElse(db, tournamentSearchable, out var tournament)) {
             return NotFound(new InvalidTournament(tournamentSearchable));
         }
@@ -320,7 +311,6 @@ public class GamesController() : ControllerBase {
         [FromQuery] bool separateFinals = false,
         [FromQuery] int maxRounds = -1
     ) {
-        var db = new HandballContext();
         if (!Utilities.TournamentOrElse(db, tournamentSearchable, out var tournament)) {
             return NotFound(new InvalidTournament(tournamentSearchable));
         }

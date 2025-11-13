@@ -11,7 +11,7 @@ namespace HandballBackend.Controllers;
 
 [ApiController]
 [Route("/api/[controller]")]
-public class OfficialsController : ControllerBase {
+public class OfficialsController(HandballContext db) : ControllerBase {
     public record GetOfficialsResponse {
         public required OfficialData[] Officials { get; set; }
         public TournamentData? Tournament { get; set; }
@@ -26,7 +26,6 @@ public class OfficialsController : ControllerBase {
         [FromQuery] int limit = -1,
         [FromQuery] int page = -1
     ) {
-        var db = new HandballContext();
         IQueryable<Official> query;
 
 
@@ -83,7 +82,6 @@ public class OfficialsController : ControllerBase {
         [FromQuery(Name = "tournament")] string? tournamentSearchable = null,
         [FromQuery] bool returnTournament = false
     ) {
-        var db = new HandballContext();
 
         var official = await db.Officials.Where(o => o.Person.SearchableName == searchable).IncludeRelevant()
             .Include(o => o.Games)
@@ -126,7 +124,6 @@ public class OfficialsController : ControllerBase {
     [TournamentAuthorize(PermissionType.UmpireManager)]
     public async Task<ActionResult> AddOfficialToTournament(
         [FromBody] AddOfficialRequest request) {
-        var db = new HandballContext();
         var tournament = await db.Tournaments
             .FirstOrDefaultAsync(a => a.SearchableName == request.Tournament);
         if (tournament is null) {
@@ -173,7 +170,6 @@ public class OfficialsController : ControllerBase {
     [TournamentAuthorize(PermissionType.UmpireManager)]
     [HttpDelete("removeFromTournament")]
     public async Task<ActionResult> RemoveOfficialFromTournament([FromBody] RemoveOfficialRequest request) {
-        var db = new HandballContext();
         var tournament = await db.Tournaments
             .FirstOrDefaultAsync(a => a.SearchableName == request.Tournament);
         if (tournament is null) {
@@ -215,7 +211,6 @@ public class OfficialsController : ControllerBase {
     [TournamentAuthorize(PermissionType.UmpireManager)]
     [HttpPost("updateForTournament")]
     public async Task<ActionResult> UpdateOfficialFromTournament([FromBody] UpdateOfficialRequest request) {
-        var db = new HandballContext();
         var tournament = await db.Tournaments
             .FirstOrDefaultAsync(a => a.SearchableName == request.Tournament);
         if (tournament is null) {

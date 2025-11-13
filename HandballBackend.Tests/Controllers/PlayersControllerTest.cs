@@ -86,7 +86,8 @@ public class PlayersControllerTest {
 
     [TestMethod]
     public void TestGetOnePlayer() {
-        var controller = new PlayersController();
+        var db = new HandballContext();
+        var controller = new PlayersController(db);
         var result = controller.GetOnePlayer("foo_bar").Result.Value;
         Assert.IsNotNull(result);
         Assert.AreEqual("Fooseph Barionette", result.Player.Name);
@@ -94,7 +95,8 @@ public class PlayersControllerTest {
 
     [TestMethod]
     public void TestGetOnePlayerBadName() {
-        var controller = new PlayersController();
+        var db = new HandballContext();
+        var controller = new PlayersController(db);
         var response = controller.GetOnePlayer("a_name_not_existing").Result.Result;
         var actual = response as NotFoundObjectResult;
         Assert.IsNotNull(actual);
@@ -104,7 +106,8 @@ public class PlayersControllerTest {
 
     [TestMethod]
     public void TestGetOnePlayerBadTournamentName() {
-        var controller = new PlayersController();
+        var db = new HandballContext();
+        var controller = new PlayersController(db);
         var response = controller.GetOnePlayer("foo_bar", tournamentSearchable: "fake_tournament").Result.Result;
         var actual = response as NotFoundObjectResult;
         Assert.IsNotNull(actual);

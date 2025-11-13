@@ -6,7 +6,7 @@ namespace HandballBackend.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class DocumentsController : ControllerBase {
+public class DocumentsController(HandballContext db) : ControllerBase {
     // GET api/values
 
     public class IndexResponse {
@@ -21,7 +21,6 @@ public class DocumentsController : ControllerBase {
 
     [HttpGet("index")]
     public async Task<ActionResult<IndexResponse>> GetDocuments() {
-        var db = new HandballContext();
         var tournamentDocuments = (await db.Documents
                 .Where(d => d.TournamentId != null)
                 .Include(d => d.Tournament)
