@@ -70,6 +70,8 @@ public class EditGamesController : ControllerBase {
         public required string[] TeamOne { get; set; }
         public required string[] TeamTwo { get; set; }
         public required bool TeamOneIga { get; set; }
+        public string? TeamOneLibero { get; set; }
+        public string? TeamTwoLibero { get; set; }
 
         public string? Official { get; set; } = null;
         public string? Scorer { get; set; } = null;
@@ -86,7 +88,8 @@ public class EditGamesController : ControllerBase {
 
         await GameManager.StartGame(startRequest.Id, startRequest.SwapService, startRequest.TeamOne,
             startRequest.TeamTwo,
-            startRequest.TeamOneIga, startRequest.Official, startRequest.Scorer);
+            startRequest.TeamOneIga, startRequest.TeamOneLibero, startRequest.TeamTwoLibero, startRequest.Official,
+            startRequest.Scorer);
         return NoContent();
     }
 

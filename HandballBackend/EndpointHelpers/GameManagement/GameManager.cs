@@ -94,6 +94,7 @@ public static class GameManager {
 
         var newEvent = SetUpGameEvent(game, GameEventType.Score, firstTeam, playerId, notes,
             details: details);
+
         newEvent.TeamToServeId = teamId;
         if (teamId == prevEvent.TeamToServeId) {
             //We won this point and the last point
@@ -121,7 +122,7 @@ public static class GameManager {
             // this is our first win of the service, so we need to make changes accordingly
             var lastService = game.Events.Where(gE => gE.TeamToServeId == teamId).OrderByDescending(gE => gE.Id)
                 .FirstOrDefault();
-            // default side is the only difference between badminton and normal serves; the second team starts on the 
+            // default side is the only difference between badminton and normal serves; the second team starts on the
             // right if using badminton.
             var defaultSide = game.Tournament!.BadmintonServes ? "Left" : "Right";
             newEvent.SideToServe = (lastService?.SideToServe ?? defaultSide) == "Left" ? "Right" : "Left";
@@ -135,13 +136,10 @@ public static class GameManager {
             }
         }
 
-        var opponent = firstTeam ? game.TeamTwo : game.TeamOne;
-
-
-        if (opponent.NonCaptainId == null) {
-            var pgs = game.Players.Where(pgs => pgs.TeamId != teamId).First();
-            //If we are , we need to be on the same side as the server
-            pgs.SideOfCourt = newEvent.SideToServe;
+        var opponentPlayers = game.Players.Where(pgs => pgs.TeamId != teamId).ToList();
+        if (opponentPlayers.Count == 1) {
+            //If we are alone, we need to be on the same side as the server
+            opponentPlayers[0].SideOfCourt = newEvent.SideToServe;
         }
 
 
@@ -153,35 +151,40 @@ public static class GameManager {
 
     public static async Task StartGame(int gameNumber, bool swapService, string[]? playersTeamOne,
         string[]? playersTeamTwo,
-        bool teamOneIsIGa, string? officialSearchable = null, string? scorerSearchable = null) {
+        bool teamOneIsIGA, string? teamOneLibero, string? teamTwoLibero, string? officialSearchable = null,
+        string? scorerSearchable = null) {
         var db = new HandballContext();
         var game = await db.Games.IncludeRelevant().Include(g => g.Events).Include(game => game.Players)
             .ThenInclude(pgs => pgs.Player)
             .FirstOrDefaultAsync(g => g.GameNumber == gameNumber);
         if (game == null) throw new ArgumentException("The game number provided doesn't exist");
         if (game.Started) throw new InvalidOperationException("The game has already begun");
-        List<PlayerGameStats> teamOneIds = [];
-        List<PlayerGameStats> teamTwoIds = [];
+        if (!game.Tournament.BadmintonServes && (teamOneLibero != null || teamTwoLibero != null)) {
+            throw new InvalidOperationException("Libero can not be set for a classic game");
+        }
+
+        List<PlayerGameStats> teamOnePlayerObjects = [];
+        List<PlayerGameStats> teamTwoPlayerObjects = [];
         if (playersTeamOne == null) {
-            teamOneIds = game.Players.Where(pgs => pgs.TeamId == game.TeamOneId).ToList();
+            teamOnePlayerObjects = game.Players.Where(pgs => pgs.TeamId == game.TeamOneId).ToList();
         } else {
             foreach (var searchableName in playersTeamOne) {
-                teamOneIds.Add(
+                teamOnePlayerObjects.Add(
                     game.Players.First(pgs => pgs.Player.SearchableName == searchableName));
             }
         }
 
         if (playersTeamTwo == null) {
-            teamTwoIds = game.Players.Where(pgs => pgs.TeamId == game.TeamOneId).ToList();
+            teamTwoPlayerObjects = game.Players.Where(pgs => pgs.TeamId == game.TeamOneId).ToList();
         } else {
             foreach (var searchableName in playersTeamTwo) {
-                teamTwoIds.Add(
+                teamTwoPlayerObjects.Add(
                     game.Players.First(pgs => pgs.Player.SearchableName == searchableName));
             }
         }
 
 
-        var igaId = teamOneIsIGa ? game.TeamOneId : game.TeamTwoId;
+        var igaId = teamOneIsIGA ? game.TeamOneId : game.TeamTwoId;
         game.Status = "In Progress";
         game.AdminStatus = "In Progress";
         game.NoteableStatus = "In Progress";
@@ -200,21 +203,27 @@ public static class GameManager {
             game.ScorerId = scorer;
         }
 
-        foreach (var (pgs, side) in teamOneIds.Zip(SIDES)) {
+        foreach (var (pgs, side) in teamOnePlayerObjects.Zip(SIDES)) {
             pgs.SideOfCourt = side;
             pgs.StartSide = side;
+            if (pgs.Player.SearchableName == teamOneLibero) {
+                pgs.IsLibero = true;
+            }
         }
 
-        foreach (var (pgs, side) in teamTwoIds.Zip(SIDES)) {
+        foreach (var (pgs, side) in teamTwoPlayerObjects.Zip(SIDES)) {
             pgs.SideOfCourt = side;
             pgs.StartSide = side;
+            if (pgs.Player.SearchableName == teamTwoLibero) {
+                pgs.IsLibero = true;
+            }
         }
 
         var servingTeamId = swapService ? game.TeamTwoId : game.TeamOneId;
-        var servingPlayer = swapService ? teamTwoIds[0] : teamOneIds[0];
+        var servingPlayer = swapService ? teamTwoPlayerObjects[0] : teamOnePlayerObjects[0];
         game.TeamToServeId = servingTeamId;
-        teamOneIds.Add(teamOneIds.Last());
-        teamTwoIds.Add(teamTwoIds.Last());
+        teamOnePlayerObjects.Add(teamOnePlayerObjects.Last());
+        teamTwoPlayerObjects.Add(teamTwoPlayerObjects.Last());
 
         var startEvent = new GameEvent {
             GameId = game.Id,
@@ -223,10 +232,10 @@ public static class GameManager {
             SideToServe = "Left",
             TeamToServeId = servingTeamId,
             PlayerToServeId = servingPlayer.PlayerId,
-            TeamOneLeftId = teamOneIds[0].PlayerId,
-            TeamOneRightId = teamOneIds[1].PlayerId,
-            TeamTwoLeftId = teamTwoIds[0].PlayerId,
-            TeamTwoRightId = teamTwoIds[1].PlayerId,
+            TeamOneLeftId = teamOnePlayerObjects[0].PlayerId,
+            TeamOneRightId = teamOnePlayerObjects[1].PlayerId,
+            TeamTwoLeftId = teamTwoPlayerObjects[0].PlayerId,
+            TeamTwoRightId = teamTwoPlayerObjects[1].PlayerId,
         };
         db.GameEvents.Add(startEvent);
         GameEventSynchroniser.SyncStartGame(game, startEvent);
@@ -623,7 +632,7 @@ public static class GameManager {
         if (!game.Started) throw new InvalidOperationException("The game has not started");
         if (game.Ended) throw new InvalidOperationException("The game has ended");
         var smallestId = game.Events.Where(gE =>
-                !IGNORED_BY_UNDO.Contains(gE.EventType) && gE is not { EventType: GameEventType.Score, PlayerId: null })
+                !IGNORED_BY_UNDO.Contains(gE.EventType) && gE is not {EventType: GameEventType.Score, PlayerId: null})
             .OrderByDescending(gE => gE.Id).First().Id;
         await db.GameEvents.Where(gE => gE.GameId == game.Id && gE.Id >= smallestId).ExecuteDeleteAsync();
         await db.SaveChangesAsync(); // Not necessary but probably still a good idea
@@ -702,13 +711,13 @@ public static class GameManager {
         game.Length = Utilities.GetUnixSeconds() - game.StartTime;
         GameEventSynchroniser.SyncGameEnd(game, endEvent);
         if (!isRandomAbandonment && game is {
-            Ranked:
+                Ranked:
                 true,
-            IsFinal:
+                IsFinal:
                 false,
-            TeamOne.NonCaptainId: not null,
-            TeamTwo.NonCaptain: not null
-        }) {
+                TeamOne.NonCaptainId: not null,
+                TeamTwo.NonCaptain: not null
+            }) {
             var playingPlayers = game.Players
                 .Where(pgs => (isForfeit || pgs.RoundsCarded + pgs.RoundsOnCourt > 0)).ToList();
             var playingPlayerIds = playingPlayers.Select(pgs => pgs.PlayerId).ToList();
@@ -839,7 +848,7 @@ public static class GameManager {
         var ranked = tournament.Ranked;
         var isBye = false;
         var tasks = new List<Task>();
-        foreach (var team in new[] { teamOne, teamTwo }) {
+        foreach (var team in new[] {teamOne, teamTwo}) {
             if (team.Id == 1) {
                 // this is the bye team
                 isBye = true;
@@ -924,7 +933,7 @@ public static class GameManager {
             .ToDictionaryAsync(pgs => pgs!.PlayerId);
 
         tasks.Clear();
-        foreach (var team in new[] { teamOne, teamTwo }) {
+        foreach (var team in new[] {teamOne, teamTwo}) {
             if (team.Id == 1) continue;
             Person?[] teamPlayers = [team.Captain, team.NonCaptain, team.Substitute];
             foreach (var p in teamPlayers.Where(p => p != null).Cast<Person>()) {
@@ -939,7 +948,8 @@ public static class GameManager {
                     InitialElo = (prevGame?.InitialElo ?? 1500.0) + (prevGame?.EloDelta ?? 0),
                     CardTime = carryCardTimes ? Math.Max(prevGame?.CardTime ?? 0, 0) : 0,
                     CardTimeRemaining = carryCardTimes ? Math.Max(prevGame?.CardTimeRemaining ?? 0, 0) : 0,
-                    EloDelta = isBye ? 0 : null
+                    EloDelta = isBye ? 0 : null,
+                    IsLibero = false,
                 }).AsTask());
             }
         }

@@ -215,7 +215,6 @@ internal static class GameEventSynchroniser {
             .Cast<PlayerGameStats?>()
             .ToList(); //force the team into LTR order
         nonServingTeam.Add(null);
-        var leftServed = gameEvent.SideServed == "Left";
         var isFirstTeam = gameEvent.TeamId == game.TeamOneId;
         if (isFirstTeam) {
             game.TeamOneScore += 1;
@@ -251,10 +250,8 @@ internal static class GameEventSynchroniser {
 
         player.PointsScored += 1;
         if (gameEvent.TeamWhoServedId is not null) {
-            var playerWhoServed = //doing this like this means that it won't give served points to carded players
-                playersOnCourt.Where(pgs => pgs.TeamId == gameEvent.TeamWhoServedId)
-                    .OrderByDescending(pgs => pgs.CardTimeRemaining == 0)
-                    .ThenByDescending(pgs => pgs.PlayerId == gameEvent.PlayerWhoServedId).First();
+            var playerWhoServed = playersOnCourt
+                .First(pgs => pgs.ActingSideOfCourt == gameEvent.SideServed && pgs.TeamId == gameEvent.TeamWhoServedId);
             playerWhoServed.ServedPoints += 1;
             if (playerWhoServed.TeamId == gameEvent.TeamId) {
                 playerWhoServed.ServedPointsWon += 1;
@@ -281,11 +278,10 @@ internal static class GameEventSynchroniser {
 
         player.ServeStreak = Math.Max(player.ServeStreak, serveStreak);
         player.AceStreak = Math.Max(player.AceStreak, aceStreak);
-        var receivingPlayer = nonServingTeam[leftServed ? 0 : 1] ??
-                              nonServingTeam.FirstOrDefault(a => a != null);
-        if (receivingPlayer?.CardTimeRemaining != 0) {
-            receivingPlayer = nonServingTeam.FirstOrDefault(pgs => (pgs?.CardTimeRemaining ?? 1) == 0);
-        }
+        var receivingPlayer = nonServingTeam
+            .Where(pgs => pgs != null)
+            .Cast<PlayerGameStats>()
+            .First(pgs => pgs.ActingSideOfCourt == gameEvent.SideToServe);
 
         if (receivingPlayer != null && gameEvent.PlayerId != null) {
             receivingPlayer.ServesReceived += 1;

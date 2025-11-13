@@ -7,6 +7,8 @@ public class GamePlayerData : PersonData {
     public int CardTime { get; set; }
     public int CardTimeRemaining { get; set; }
     public string? SideOfCourt { get; set; }
+    public string? ActingSideOfCourt { get; set; }
+    public bool IsLibero { get; set; }
     public bool IsCaptain { get; set; }
     public string? StartSide { get; set; }
     public List<GameEventData> PrevCards { get; set; }
@@ -17,7 +19,8 @@ public class GamePlayerData : PersonData {
         bool includeStats = false,
         bool formatData = false
     )
-        : this(game.Players.First(p => p.PlayerId == player.Id), includeStats, formatData) { }
+        : this(game.Players.First(p => p.PlayerId == player.Id), includeStats, formatData) {
+    }
 
     public GamePlayerData(PlayerGameStats pgs,
         bool includeStats = false,
@@ -29,6 +32,8 @@ public class GamePlayerData : PersonData {
         CardTime = pgs.CardTime;
         CardTimeRemaining = pgs.CardTimeRemaining;
         SideOfCourt = pgs.SideOfCourt;
+        ActingSideOfCourt = pgs.ActingSideOfCourt;
+        IsLibero = pgs.IsLibero;
         IsCaptain = pgs.PlayerId == pgs.Team.CaptainId;
         StartSide = pgs.StartSide;
         PrevCards = isUmpire
