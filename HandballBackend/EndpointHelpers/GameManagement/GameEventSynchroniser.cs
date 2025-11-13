@@ -72,31 +72,25 @@ internal static class GameEventSynchroniser {
                 default:
                     throw new ArgumentOutOfRangeException();
             }
-        }
-
-        var lastEvent = game.Events.OrderByDescending(gE => gE.Id).FirstOrDefault();
-        foreach (var pgs in game.Players) {
-            if (lastEvent == null) {
-                pgs.SideOfCourt = pgs.StartSide;
-            } else if (
-                (pgs.TeamId == game.TeamOneId && lastEvent.TeamOneLeftId == lastEvent.TeamOneRightId) ||
-                (pgs.TeamId == game.TeamTwoId && lastEvent.TeamTwoLeftId == lastEvent.TeamTwoRightId)
-            ) {
-                pgs.SideOfCourt = lastEvent.SideToServe;
-            } else if (pgs.PlayerId == lastEvent.TeamTwoLeftId || pgs.PlayerId == lastEvent.TeamOneLeftId) {
-                pgs.SideOfCourt = "Left";
-            } else if (pgs.PlayerId == lastEvent.TeamTwoRightId || pgs.PlayerId == lastEvent.TeamOneRightId) {
-                pgs.SideOfCourt = "Right";
-            } else {
-                pgs.SideOfCourt = "Substitute";
+            game.TeamToServeId = gameEvent.TeamToServeId;
+            game.SideToServe = gameEvent.SideToServe;
+            game.PlayerToServeId = gameEvent.PlayerToServeId;
+            foreach (var pgs in game.Players) {
+                if (
+                    (pgs.TeamId == game.TeamOneId && gameEvent.TeamOneLeftId == gameEvent.TeamOneRightId) ||
+                    (pgs.TeamId == game.TeamTwoId && gameEvent.TeamTwoLeftId == gameEvent.TeamTwoRightId)
+                ) {
+                    pgs.SideOfCourt = gameEvent.SideToServe;
+                } else if (pgs.PlayerId == gameEvent.TeamTwoLeftId || pgs.PlayerId == gameEvent.TeamOneLeftId) {
+                    pgs.SideOfCourt = "Left";
+                } else if (pgs.PlayerId == gameEvent.TeamTwoRightId || pgs.PlayerId == gameEvent.TeamOneRightId) {
+                    pgs.SideOfCourt = "Right";
+                } else {
+                    pgs.SideOfCourt = "Substitute";
+                }
             }
         }
 
-        if (lastEvent != null) {
-            game.TeamToServeId = lastEvent.TeamToServeId;
-            game.SideToServe = lastEvent.SideToServe;
-            game.PlayerToServeId = lastEvent.PlayerToServeId;
-        }
     }
 
     public static void SyncResolve(Game game, GameEvent gameEvent) {
@@ -251,7 +245,7 @@ internal static class GameEventSynchroniser {
         player.PointsScored += 1;
         if (gameEvent.TeamWhoServedId is not null) {
             var playerWhoServed = playersOnCourt
-                .First(pgs => pgs.ActingSideOfCourt == gameEvent.SideServed && pgs.TeamId == gameEvent.TeamWhoServedId);
+                .FirstOrDefault(pgs => pgs.ActingSideOfCourtAtEvent(gameEvent) == gameEvent.SideServed && pgs.TeamId == gameEvent.TeamWhoServedId);
             playerWhoServed.ServedPoints += 1;
             if (playerWhoServed.TeamId == gameEvent.TeamId) {
                 playerWhoServed.ServedPointsWon += 1;
@@ -281,7 +275,7 @@ internal static class GameEventSynchroniser {
         var receivingPlayer = nonServingTeam
             .Where(pgs => pgs != null)
             .Cast<PlayerGameStats>()
-            .First(pgs => pgs.ActingSideOfCourt == gameEvent.SideToServe);
+            .FirstOrDefault(pgs => pgs.ActingSideOfCourtAtEvent(gameEvent) == gameEvent.SideToServe);
 
         if (receivingPlayer != null && gameEvent.PlayerId != null) {
             receivingPlayer.ServesReceived += 1;

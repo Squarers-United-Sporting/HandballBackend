@@ -206,17 +206,15 @@ public static class GameManager {
         foreach (var (pgs, side) in teamOnePlayerObjects.Zip(SIDES)) {
             pgs.SideOfCourt = side;
             pgs.StartSide = side;
-            if (pgs.Player.SearchableName == teamOneLibero) {
-                pgs.IsLibero = true;
-            }
+
+            pgs.IsLibero = pgs.Player.SearchableName == teamOneLibero;
         }
 
         foreach (var (pgs, side) in teamTwoPlayerObjects.Zip(SIDES)) {
             pgs.SideOfCourt = side;
             pgs.StartSide = side;
-            if (pgs.Player.SearchableName == teamTwoLibero) {
-                pgs.IsLibero = true;
-            }
+
+            pgs.IsLibero = pgs.Player.SearchableName == teamTwoLibero;
         }
 
         var servingTeamId = swapService ? game.TeamTwoId : game.TeamOneId;

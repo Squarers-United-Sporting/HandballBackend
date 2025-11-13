@@ -155,6 +155,8 @@ public class PlayerGameStats {
     [NotMapped]
     public string? ActingSideOfCourt {
         get {
+            Console.WriteLine(Game.TeamOneScore);
+            if (Game.Ended || !Game.Started) return SideOfCourt;
             var db = new HandballContext();
             var teammates = db.PlayerGameStats.Where(pgs2 =>
                 pgs2.GameId == GameId &&
@@ -184,6 +186,37 @@ public class PlayerGameStats {
 
             return SideOfCourt;
         }
+    }
+
+    public string? ActingSideOfCourtAtEvent(GameEvent gE) {
+        var db = new HandballContext();
+        var teammates = db.PlayerGameStats.Where(pgs2 =>
+            pgs2.GameId == GameId &&
+            pgs2.TeamId == TeamId &&
+            pgs2.PlayerId != PlayerId);
+        if (SideOfCourt == gE.SideToServe) {
+            // the serve is on our side, meaning we need to swap sides if:
+            //  1) we are carded (as carded players cannot serve or receive serves)
+            //  2) we are not serving and our teammate is the libero
+            if (
+                CardTimeRemaining != 0 || // we are carded
+                teammates.Any(pgs2 =>
+                    pgs2.IsLibero && pgs2.SideOfCourt != "Substitute" && pgs2.CardTimeRemaining == 0) &&
+                TeamId != gE.TeamToServeId // our teammate is libero and we are receiving the serve
+            ) {
+                return SideOfCourt == "Left" ? "Right" : "Left";
+            }
+        } else {
+            // the serve is on the other side, meaning we need to swap sides if:
+            //  1) our teammate is carded (as they can not serve or receive serves)
+            //  2) we are the libero and the other team is serving
+            if (teammates.Any(pgs2 => pgs2.CardTimeRemaining != 0) ||
+                (IsLibero && TeamId != gE.TeamToServeId && CardTimeRemaining == 0)) {
+                return SideOfCourt == "Left" ? "Right" : "Left";
+            }
+        }
+
+        return SideOfCourt;
     }
 
     public GamePlayerData ToSendableData(bool includeStats = false,
