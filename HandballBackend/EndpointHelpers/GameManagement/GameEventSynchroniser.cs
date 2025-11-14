@@ -244,10 +244,8 @@ internal static class GameEventSynchroniser {
 
         player.PointsScored += 1;
         if (gameEvent.TeamWhoServedId is not null) {
-            var playerWhoServed = playersOnCourt
-                .FirstOrDefault(pgs =>
-                    pgs.ActingSideOfCourtAtEvent(gameEvent) == gameEvent.SideServed &&
-                    pgs.TeamId == gameEvent.TeamWhoServedId);
+            var playerWhoServed = playersOnCourt.Where(pgs => pgs.TeamId == gameEvent.TeamWhoServedId)
+                .OrderByDescending(pgs => pgs.CardTimeRemaining == 0).ThenByDescending(pgs => pgs.SideOfCourt == gameEvent.SideServed).FirstOrDefault();
             playerWhoServed.ServedPoints += 1;
             if (playerWhoServed.TeamId == gameEvent.TeamId) {
                 playerWhoServed.ServedPointsWon += 1;
