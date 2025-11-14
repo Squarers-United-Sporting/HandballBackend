@@ -72,6 +72,7 @@ internal static class GameEventSynchroniser {
                 default:
                     throw new ArgumentOutOfRangeException();
             }
+
             game.TeamToServeId = gameEvent.TeamToServeId;
             game.SideToServe = gameEvent.SideToServe;
             game.PlayerToServeId = gameEvent.PlayerToServeId;
@@ -90,7 +91,6 @@ internal static class GameEventSynchroniser {
                 }
             }
         }
-
     }
 
     public static void SyncResolve(Game game, GameEvent gameEvent) {
@@ -245,7 +245,9 @@ internal static class GameEventSynchroniser {
         player.PointsScored += 1;
         if (gameEvent.TeamWhoServedId is not null) {
             var playerWhoServed = playersOnCourt
-                .FirstOrDefault(pgs => pgs.ActingSideOfCourtAtEvent(gameEvent) == gameEvent.SideServed && pgs.TeamId == gameEvent.TeamWhoServedId);
+                .FirstOrDefault(pgs =>
+                    pgs.ActingSideOfCourtAtEvent(gameEvent) == gameEvent.SideServed &&
+                    pgs.TeamId == gameEvent.TeamWhoServedId);
             playerWhoServed.ServedPoints += 1;
             if (playerWhoServed.TeamId == gameEvent.TeamId) {
                 playerWhoServed.ServedPointsWon += 1;
@@ -275,7 +277,9 @@ internal static class GameEventSynchroniser {
         var receivingPlayer = nonServingTeam
             .Where(pgs => pgs != null)
             .Cast<PlayerGameStats>()
-            .FirstOrDefault(pgs => pgs.ActingSideOfCourtAtEvent(gameEvent) == gameEvent.SideToServe);
+            .OrderByDescending(pgs => pgs.CardTimeRemaining == 0)
+            .ThenByDescending(pgs => pgs.IsLibero)
+            .ThenByDescending(pgs => pgs.SideOfCourt == gameEvent.SideServed).FirstOrDefault();
 
         if (receivingPlayer != null && gameEvent.PlayerId != null) {
             receivingPlayer.ServesReceived += 1;
