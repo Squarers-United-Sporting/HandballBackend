@@ -72,30 +72,24 @@ internal static class GameEventSynchroniser {
                 default:
                     throw new ArgumentOutOfRangeException();
             }
-        }
 
-        var lastEvent = game.Events.OrderByDescending(gE => gE.Id).FirstOrDefault();
-        foreach (var pgs in game.Players) {
-            if (lastEvent == null) {
-                pgs.SideOfCourt = pgs.StartSide;
-            } else if (
-                (pgs.TeamId == game.TeamOneId && lastEvent.TeamOneLeftId == lastEvent.TeamOneRightId) ||
-                (pgs.TeamId == game.TeamTwoId && lastEvent.TeamTwoLeftId == lastEvent.TeamTwoRightId)
-            ) {
-                pgs.SideOfCourt = lastEvent.SideToServe;
-            } else if (pgs.PlayerId == lastEvent.TeamTwoLeftId || pgs.PlayerId == lastEvent.TeamOneLeftId) {
-                pgs.SideOfCourt = "Left";
-            } else if (pgs.PlayerId == lastEvent.TeamTwoRightId || pgs.PlayerId == lastEvent.TeamOneRightId) {
-                pgs.SideOfCourt = "Right";
-            } else {
-                pgs.SideOfCourt = "Substitute";
+            game.TeamToServeId = gameEvent.TeamToServeId;
+            game.SideToServe = gameEvent.SideToServe;
+            game.PlayerToServeId = gameEvent.PlayerToServeId;
+            foreach (var pgs in game.Players) {
+                if (
+                    (pgs.TeamId == game.TeamOneId && gameEvent.TeamOneLeftId == gameEvent.TeamOneRightId) ||
+                    (pgs.TeamId == game.TeamTwoId && gameEvent.TeamTwoLeftId == gameEvent.TeamTwoRightId)
+                ) {
+                    pgs.SideOfCourt = gameEvent.SideToServe;
+                } else if (pgs.PlayerId == gameEvent.TeamTwoLeftId || pgs.PlayerId == gameEvent.TeamOneLeftId) {
+                    pgs.SideOfCourt = "Left";
+                } else if (pgs.PlayerId == gameEvent.TeamTwoRightId || pgs.PlayerId == gameEvent.TeamOneRightId) {
+                    pgs.SideOfCourt = "Right";
+                } else {
+                    pgs.SideOfCourt = "Substitute";
+                }
             }
-        }
-
-        if (lastEvent != null) {
-            game.TeamToServeId = lastEvent.TeamToServeId;
-            game.SideToServe = lastEvent.SideToServe;
-            game.PlayerToServeId = lastEvent.PlayerToServeId;
         }
     }
 
@@ -215,7 +209,6 @@ internal static class GameEventSynchroniser {
             .Cast<PlayerGameStats?>()
             .ToList(); //force the team into LTR order
         nonServingTeam.Add(null);
-        var leftServed = gameEvent.SideServed == "Left";
         var isFirstTeam = gameEvent.TeamId == game.TeamOneId;
         if (isFirstTeam) {
             game.TeamOneScore += 1;
@@ -251,10 +244,8 @@ internal static class GameEventSynchroniser {
 
         player.PointsScored += 1;
         if (gameEvent.TeamWhoServedId is not null) {
-            var playerWhoServed = //doing this like this means that it won't give served points to carded players
-                playersOnCourt.Where(pgs => pgs.TeamId == gameEvent.TeamWhoServedId)
-                    .OrderByDescending(pgs => pgs.CardTimeRemaining == 0)
-                    .ThenByDescending(pgs => pgs.PlayerId == gameEvent.PlayerWhoServedId).First();
+            var playerWhoServed = playersOnCourt.Where(pgs => pgs.TeamId == gameEvent.TeamWhoServedId)
+                .OrderByDescending(pgs => pgs.CardTimeRemaining == 0).ThenByDescending(pgs => pgs.SideOfCourt == gameEvent.SideServed).FirstOrDefault();
             playerWhoServed.ServedPoints += 1;
             if (playerWhoServed.TeamId == gameEvent.TeamId) {
                 playerWhoServed.ServedPointsWon += 1;
@@ -281,11 +272,12 @@ internal static class GameEventSynchroniser {
 
         player.ServeStreak = Math.Max(player.ServeStreak, serveStreak);
         player.AceStreak = Math.Max(player.AceStreak, aceStreak);
-        var receivingPlayer = nonServingTeam[leftServed ? 0 : 1] ??
-                              nonServingTeam.FirstOrDefault(a => a != null);
-        if (receivingPlayer?.CardTimeRemaining != 0) {
-            receivingPlayer = nonServingTeam.FirstOrDefault(pgs => (pgs?.CardTimeRemaining ?? 1) == 0);
-        }
+        var receivingPlayer = nonServingTeam
+            .Where(pgs => pgs != null)
+            .Cast<PlayerGameStats>()
+            .OrderByDescending(pgs => pgs.CardTimeRemaining == 0)
+            .ThenByDescending(pgs => pgs.IsLibero)
+            .ThenByDescending(pgs => pgs.SideOfCourt == gameEvent.SideServed).FirstOrDefault();
 
         if (receivingPlayer != null && gameEvent.PlayerId != null) {
             receivingPlayer.ServesReceived += 1;

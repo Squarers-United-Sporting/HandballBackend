@@ -134,6 +134,9 @@ public class PlayerGameStats {
     [Column("elo_delta")]
     public double? EloDelta { get; set; }
 
+    [Column("is_libero")]
+    public bool IsLibero { get; set; }
+
     [ForeignKey("GameId")]
     public Game Game { get; set; }
 
@@ -148,6 +151,9 @@ public class PlayerGameStats {
 
     [ForeignKey("TournamentId")]
     public Tournament Tournament { get; set; }
+
+
+
 
     public GamePlayerData ToSendableData(bool includeStats = false,
         bool formatData = false,

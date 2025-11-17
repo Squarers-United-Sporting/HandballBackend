@@ -7,6 +7,8 @@ public class GamePlayerData : PersonData {
     public int CardTime { get; set; }
     public int CardTimeRemaining { get; set; }
     public string? SideOfCourt { get; set; }
+    public string? ActingSideOfCourt { get; set; }
+    public bool IsLibero { get; set; }
     public bool IsCaptain { get; set; }
     public string? StartSide { get; set; }
     public List<GameEventData> PrevCards { get; set; }
@@ -17,7 +19,8 @@ public class GamePlayerData : PersonData {
         bool includeStats = false,
         bool formatData = false
     )
-        : this(game.Players.First(p => p.PlayerId == player.Id), includeStats, formatData) { }
+        : this(game.Players.First(p => p.PlayerId == player.Id), includeStats, formatData) {
+    }
 
     public GamePlayerData(PlayerGameStats pgs,
         bool includeStats = false,
@@ -29,6 +32,38 @@ public class GamePlayerData : PersonData {
         CardTime = pgs.CardTime;
         CardTimeRemaining = pgs.CardTimeRemaining;
         SideOfCourt = pgs.SideOfCourt;
+        ActingSideOfCourt = pgs.SideOfCourt;
+
+        if (pgs.Game is { Ended: false, Started: true }) {
+            var db = new HandballContext();
+            var teammates = db.PlayerGameStats.Where(pgs2 =>
+                pgs2.GameId == pgs.GameId &&
+                pgs2.TeamId == pgs.TeamId &&
+                pgs2.PlayerId != pgs.PlayerId);
+            if (pgs.SideOfCourt == pgs.Game.SideToServe) {
+                // the serve is on our side, meaning we need to swap sides if:
+                //  1) we are carded (as carded players cannot serve or receive serves)
+                //  2) we are not serving and our teammate is the libero
+                if (
+                    pgs.CardTimeRemaining != 0 || // we are carded
+                    teammates.Any(pgs2 =>
+                        pgs2.IsLibero && pgs2.SideOfCourt != "Substitute" && pgs2.CardTimeRemaining == 0) &&
+                    pgs.TeamId != pgs.Game.TeamToServeId // our teammate is libero and we are receiving the serve
+                ) {
+                    ActingSideOfCourt = SideOfCourt == "Left" ? "Right" : "Left";
+                }
+            } else {
+                // the serve is on the other side, meaning we need to swap sides if:
+                //  1) our teammate is carded (as they can not serve or receive serves)
+                //  2) we are the libero and the other team is serving
+                if (teammates.Any(pgs2 => pgs2.CardTimeRemaining != 0) ||
+                    (pgs.IsLibero && pgs.TeamId != pgs.Game.TeamToServeId && pgs.CardTimeRemaining == 0)) {
+                    ActingSideOfCourt = SideOfCourt == "Left" ? "Right" : "Left";
+                }
+            }
+        }
+
+        IsLibero = pgs.IsLibero;
         IsCaptain = pgs.PlayerId == pgs.Team.CaptainId;
         StartSide = pgs.StartSide;
         PrevCards = isUmpire

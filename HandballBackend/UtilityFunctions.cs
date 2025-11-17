@@ -133,7 +133,7 @@ internal static class UtilityFunctions {
                 continue;
             }
 
-            GameManager.StartGame(i, false, null, null, true);
+            GameManager.StartGame(i, false, null, null, true, null, null);
             GameManager.Forfeit(i, false);
             GameManager.End(
                 i,
