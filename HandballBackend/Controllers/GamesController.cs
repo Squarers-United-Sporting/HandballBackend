@@ -1,9 +1,11 @@
+using HandballBackend.Authentication;
 using HandballBackend.Database;
 using HandballBackend.Database.Models;
 using HandballBackend.Database.SendableTypes;
 using HandballBackend.EndpointHelpers;
 using HandballBackend.ErrorTypes;
 using HandballBackend.Utils;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.EntityFrameworkCore;
@@ -52,7 +54,7 @@ public class GamesController(HandballContext db, ICustomPermissionService permis
             return NotFound(new DoesNotExist("Game", gameNumber.ToString()));
         }
 
-        var isUmpire = permission.IsUmpire(game);
+        var isUmpire = permission.IsUmpire();
         var cards = db.GameEvents.Where(gE =>
             gE.TournamentId == game.TournamentId
             && GameEvent.CardTypes.Contains(gE.EventType)
@@ -97,7 +99,7 @@ public class GamesController(HandballContext db, ICustomPermissionService permis
             query = query.Where(g => g.TournamentId == tournament.Id);
         }
 
-        var isAdmin = permission.IsUmpireManager(tournament);
+        var isAdmin = permission.IsUmpireManager();
         if (!includeByes) {
             query = query.Where(g => !g.IsBye);
         }
@@ -247,7 +249,7 @@ public class GamesController(HandballContext db, ICustomPermissionService permis
     }
 
     [HttpGet("noteable")]
-    [TournamentAuthorize(PermissionType.UmpireManager)]
+    [Authorize(Policy = Policies.IsUmpireManager)]
     public async Task<ActionResult<GetNoteableResponse>> GetNoteableGames(
         [FromQuery(Name = "tournament")] string? tournamentSearchable = null,
         [FromQuery] bool includeGameEvents = false,
@@ -315,7 +317,7 @@ public class GamesController(HandballContext db, ICustomPermissionService permis
             return NotFound(new InvalidTournament(tournamentSearchable));
         }
 
-        var isAdmin = permission.IsUmpireManager(tournament);
+        var isAdmin = permission.IsUmpireManager();
 
 
         var query = db.Games.Where(g => g.GameNumber > -2 && g.TournamentId == tournament!.Id).IncludeRelevant()
@@ -324,7 +326,7 @@ public class GamesController(HandballContext db, ICustomPermissionService permis
         query = query.OrderBy(g => g.Id);
 
 
-        var isUmpire = permission.IsUmpireManager(tournament);
+        var isUmpire = permission.IsUmpire();
         var games = await query.Select(g => g.ToSendableData(false, false, false, false, isUmpire, isAdmin))
             .ToArrayAsync();
 

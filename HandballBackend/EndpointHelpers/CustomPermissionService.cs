@@ -1,4 +1,6 @@
+using System.Security.Claims;
 using System.Text;
+using HandballBackend.Authentication;
 using HandballBackend.Database.Models;
 using HandballBackend.Utils;
 using Microsoft.EntityFrameworkCore;
@@ -12,6 +14,7 @@ public enum PermissionType {
     LoggedIn,
     Umpire,
     UmpireManager,
+    TournamentDirector,
     Admin,
 }
 
@@ -31,6 +34,7 @@ public static class PermissionExtensions {
             1 => PermissionType.LoggedIn,
             2 => PermissionType.Umpire,
             3 => PermissionType.UmpireManager,
+            4 => PermissionType.TournamentDirector,
             5 => PermissionType.Admin,
             _ => throw new ArgumentOutOfRangeException(nameof(permissionType), permissionType, null)
         };
@@ -46,6 +50,7 @@ public static class PermissionExtensions {
             PermissionType.LoggedIn => 1,
             PermissionType.Umpire => 2,
             PermissionType.UmpireManager => 3,
+            PermissionType.TournamentDirector => 4,
             PermissionType.Admin => 5,
             _ => throw new ArgumentOutOfRangeException(nameof(permissionType), permissionType, null)
         };
@@ -54,11 +59,9 @@ public static class PermissionExtensions {
 
 public interface ICustomPermissionService {
     bool IsAdmin();
-    bool IsUmpireManager(Tournament? tournament);
-    bool IsUmpireManager(Game g);
-    bool IsUmpire(Tournament? tournament);
-    bool IsUmpire(Game g);
-    PermissionType GetRequestPermissions(Tournament? tournament);
+    bool IsUmpireManager();
+    bool IsUmpire();
+    PermissionType GetRequestPermissions();
     Person? PersonByToken(string? token);
     void SetPassword(int personId, string password);
     Person? Login(int personId, string password, bool longSession);
@@ -68,57 +71,24 @@ public interface ICustomPermissionService {
 public class CustomPermissionService(HandballContext db, IHttpContextAccessor contextAccessor)
     : ICustomPermissionService {
     public bool IsAdmin() {
-        var person = PersonByToken(GetToken());
-        if (person == null) return false;
-        return person.PermissionLevel.ToInt() >= PermissionType.Admin.ToInt();
+        return GetRequestPermissions() >= PermissionType.Admin;
     }
 
-    public bool IsUmpireManager(Tournament? tournament) {
-        var person = PersonByToken(GetToken());
-        if (person == null) return false;
-        if (IsAdmin()) return true;
-        if (tournament == null) return person.PermissionLevel.ToInt() >= PermissionType.UmpireManager.ToInt();
-        return person.Official!.TournamentOfficials.Any(to =>
-            to.TournamentId == tournament.Id &&
-            to.Role.ToInt() >= PermissionType.UmpireManager.ToInt());
-    }
-
-    public bool IsUmpireManager(Game g) {
-        var person = PersonByToken(GetToken());
-        if (person == null) return false;
-        if (IsAdmin()) return true;
-        return person.Official!.TournamentOfficials.Any(to =>
-            to.TournamentId == g.TournamentId &&
-            to.Role.ToInt() >= PermissionType.UmpireManager.ToInt());
-    }
-
-    public bool IsUmpire(Tournament? tournament) {
-        var person = PersonByToken(GetToken());
-        if (person == null) return false;
-        if (IsAdmin()) return true;
-        if (tournament == null) return person.PermissionLevel.ToInt() >= PermissionType.Umpire.ToInt();
-        return person.Official!.TournamentOfficials.Any(to =>
-            to.TournamentId == tournament.Id &&
-            to.Role.ToInt() >= PermissionType.Umpire.ToInt());
-    }
-
-    public bool IsUmpire(Game g) {
-        var person = PersonByToken(GetToken());
-        if (person == null) return false;
-        if (IsAdmin()) return true;
-        return person.Official!.TournamentOfficials.Any(to =>
-            to.TournamentId == g.TournamentId &&
-            to.Role.ToInt() >= PermissionType.Umpire.ToInt());
+    public bool IsUmpireManager() {
+        return GetRequestPermissions() >= PermissionType.UmpireManager;
     }
 
 
-    public PermissionType GetRequestPermissions(Tournament? tournament) {
-        var person = PersonByToken(GetToken());
-        if (person == null) return PermissionType.None;
-        if (IsAdmin()) return PermissionType.Admin;
-        if (tournament == null) return person.PermissionLevel;
-        return person.Official!.TournamentOfficials.First(to =>
-            to.TournamentId == tournament.Id).Role.ToPermissionType();
+    public bool IsUmpire() {
+        return GetRequestPermissions() >= PermissionType.Umpire;
+    }
+
+
+    public PermissionType GetRequestPermissions() {
+        return contextAccessor.HttpContext?.User.Claims.Select(c =>
+                       c.Type == ClaimTypes.Role ? Enum.Parse<PermissionType>(c.Value) : PermissionType.None)
+                   .DefaultIfEmpty(PermissionType.None).Max() ??
+               PermissionType.None;
     }
 
     private bool PersonOrElse(HandballContext db, int personId, out Person person) {

@@ -32,7 +32,7 @@ public class PlayersController(HandballContext db, ICustomPermissionService perm
             return NotFound(new InvalidTournament(tournamentSearchable));
         }
 
-        var isAdmin = permission.IsUmpireManager(tournament);
+        var isAdmin = permission.IsUmpireManager();
 
         var player = await db.People
             .Where(t => t.SearchableName == searchable)
@@ -101,7 +101,7 @@ public class PlayersController(HandballContext db, ICustomPermissionService perm
                 .Where(p => p.SearchableName != "worstie");
         }
 
-        var isAdmin = permission.IsUmpireManager(tournament);
+        var isAdmin = permission.IsUmpireManager();
         if (page > 0) {
             if (limit < 0) return BadRequest(new ActionNotAllowed("Cannot pass page without passing a limit"));
             query = query.Skip(page * limit);

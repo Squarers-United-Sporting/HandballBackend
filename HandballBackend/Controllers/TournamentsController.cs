@@ -84,7 +84,7 @@ public class TournamentsController(HandballContext db) : ControllerBase {
 
 
     [HttpPost("{searchable}/start")]
-    [TournamentAuthorize(PermissionType.UmpireManager)]
+    [Authorize(Policy = Policies.IsTournamentDirector)]
     public async Task<ActionResult> StartTournament(string searchable) {
         var tournament = await db.Tournaments
             .FirstOrDefaultAsync(a => a.SearchableName == searchable);
@@ -97,7 +97,7 @@ public class TournamentsController(HandballContext db) : ControllerBase {
     }
 
     [HttpPost("{searchable}/finalsNextRound")]
-    [TournamentAuthorize(PermissionType.UmpireManager)]
+    [Authorize(Policy = Policies.IsTournamentDirector)]
     public async Task<ActionResult> PutTournamentInFinals(string searchable) {
         var tournament = await db.Tournaments
             .FirstOrDefaultAsync(a => a.SearchableName == searchable);

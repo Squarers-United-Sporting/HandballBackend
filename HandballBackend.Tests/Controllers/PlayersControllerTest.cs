@@ -21,7 +21,7 @@ public class PlayersControllerTest {
         var db = new HandballContext();
         db.Database.EnsureCreated();
         db.Tournaments.Add(new Tournament {
-            Name = "The Test Tournament",
+            Name = "The Test TournamentId",
             SearchableName = "test",
             Editable = false,
             FixturesType = "RoundRobin",

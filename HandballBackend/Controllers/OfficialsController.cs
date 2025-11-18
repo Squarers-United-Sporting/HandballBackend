@@ -1,9 +1,11 @@
+using HandballBackend.Authentication;
 using HandballBackend.Database;
 using HandballBackend.Database.Models;
 using HandballBackend.Database.SendableTypes;
 using HandballBackend.EndpointHelpers;
 using HandballBackend.ErrorTypes;
 using HandballBackend.Utils;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -33,7 +35,7 @@ public class OfficialsController(HandballContext db, ICustomPermissionService pe
             return NotFound(new InvalidTournament(tournamentSearchable));
         }
 
-        var isAdmin = permission.IsUmpireManager(tournament);
+        var isAdmin = permission.IsUmpireManager();
 
         if (tournament is not null) {
             query = db.TournamentOfficials
@@ -82,7 +84,6 @@ public class OfficialsController(HandballContext db, ICustomPermissionService pe
         [FromQuery(Name = "tournament")] string? tournamentSearchable = null,
         [FromQuery] bool returnTournament = false
     ) {
-
         var official = await db.Officials.Where(o => o.Person.SearchableName == searchable).IncludeRelevant()
             .Include(o => o.Games)
             .ThenInclude(g => g.Players)
@@ -95,7 +96,7 @@ public class OfficialsController(HandballContext db, ICustomPermissionService pe
             return NotFound(new InvalidTournament(tournamentSearchable));
         }
 
-        var isAdmin = permission.IsUmpireManager(tournament);
+        var isAdmin = permission.IsUmpireManager();
 
 
         if (returnTournament && tournament is null) {
@@ -121,7 +122,7 @@ public class OfficialsController(HandballContext db, ICustomPermissionService pe
     }
 
     [HttpPost("addToTournament")]
-    [TournamentAuthorize(PermissionType.UmpireManager)]
+    [Authorize(Policy = Policies.IsUmpireManager)]
     public async Task<ActionResult> AddOfficialToTournament(
         [FromBody] AddOfficialRequest request) {
         var tournament = await db.Tournaments
@@ -167,7 +168,7 @@ public class OfficialsController(HandballContext db, ICustomPermissionService pe
         public required string Tournament { get; set; }
     }
 
-    [TournamentAuthorize(PermissionType.UmpireManager)]
+    [Authorize(Policy = Policies.IsUmpireManager)]
     [HttpDelete("removeFromTournament")]
     public async Task<ActionResult> RemoveOfficialFromTournament([FromBody] RemoveOfficialRequest request) {
         var tournament = await db.Tournaments
@@ -188,7 +189,7 @@ public class OfficialsController(HandballContext db, ICustomPermissionService pe
             return BadRequest("The Official doesn't exist");
         }
 
-        if (tournamentOfficial.Role.ToPermissionType() >= permission.GetRequestPermissions(tournament)) {
+        if (tournamentOfficial.Role.ToPermissionType() >= permission.GetRequestPermissions()) {
             return Forbid("You cannot delete someone with permissions higher than your own!");
         }
 
@@ -208,7 +209,7 @@ public class OfficialsController(HandballContext db, ICustomPermissionService pe
         public string? Role { get; set; }
     }
 
-    [TournamentAuthorize(PermissionType.UmpireManager)]
+    [Authorize(Policy = Policies.IsUmpireManager)]
     [HttpPost("updateForTournament")]
     public async Task<ActionResult> UpdateOfficialFromTournament([FromBody] UpdateOfficialRequest request) {
         var tournament = await db.Tournaments
@@ -239,11 +240,11 @@ public class OfficialsController(HandballContext db, ICustomPermissionService pe
 
         if (request.Role != null) {
             if (Enum.TryParse<OfficialRole>(request.Role.Replace(" ", ""), out var role)) {
-                if (tournamentOfficial.Role.ToPermissionType() >= permission.GetRequestPermissions(tournament)) {
+                if (tournamentOfficial.Role.ToPermissionType() >= permission.GetRequestPermissions()) {
                     return Forbid("You cannot set permissions of someone who is higher than your own!");
                 }
 
-                if (role.ToPermissionType() >= permission.GetRequestPermissions(tournament)) {
+                if (role.ToPermissionType() >= permission.GetRequestPermissions()) {
                     return Forbid("You cannot set permissions higher than your own!");
                 }
 

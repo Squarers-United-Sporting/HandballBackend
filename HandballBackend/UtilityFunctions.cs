@@ -123,17 +123,17 @@ internal static class UtilityFunctions {
                 continue;
             }
 
-            GameManager.StartGame(i, false, null, null, true, null, null);
-            GameManager.Forfeit(i, false);
-            GameManager.End(
-                i,
-                game.Players.Select(p => p.Player.SearchableName).ToList(), 3, 3,
-                "Testing",
-                null,
-                null,
-                "",
-                "", false
-            );
+            // GameManagementService.StartGame(i, false, null, null, true, null, null);
+            // GameManagementService.Forfeit(i, false);
+            // GameManagementService.End(
+            //     i,
+            //     game.Players.Select(p => p.Player.SearchableName).ToList(), 3, 3,
+            //     "Testing",
+            //     null,
+            //     null,
+            //     "",
+            //     "", false
+            // );
             i++;
             game = db.Games.Include(game => game.Players).ThenInclude(playerGameStats => playerGameStats.Player)
                 .FirstOrDefault(g => g.GameNumber == i);
@@ -256,7 +256,7 @@ internal static class UtilityFunctions {
             }
 
             var pgs = game.Players.First(pgs => pgs.PlayerId == bestPlayerId);
-            var newEvent = GameManager.SetUpGameEvent(game, GameEventType.Votes, pgs.TeamId == game.TeamOneId,
+            var newEvent = GameManagementService.SetUpGameEvent(game, GameEventType.Votes, pgs.TeamId == game.TeamOneId,
                 pgs.PlayerId, details: 2);
             newEvent.CreatedAt = endEvent.CreatedAt;
             db.Add(newEvent);

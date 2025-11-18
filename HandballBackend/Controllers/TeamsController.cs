@@ -1,9 +1,11 @@
+using HandballBackend.Authentication;
 using HandballBackend.Database;
 using HandballBackend.Database.Models;
 using HandballBackend.Database.SendableTypes;
 using HandballBackend.EndpointHelpers;
 using HandballBackend.ErrorTypes;
 using HandballBackend.Utils;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -283,7 +285,7 @@ public class TeamsController(HandballContext db) : ControllerBase {
     }
 
     [HttpPost("addToTournament")]
-    [TournamentAuthorize(PermissionType.UmpireManager)]
+    [Authorize(Policy = Policies.IsUmpireManager)]
     public async Task<ActionResult<AddTeamResponse>> AddTeamToTournament(
         [FromBody] AddTeamRequest request) {
         var tournament = db.Tournaments
@@ -369,7 +371,7 @@ public class TeamsController(HandballContext db) : ControllerBase {
     }
 
     [HttpPatch("updateForTournament")]
-    [TournamentAuthorize(PermissionType.UmpireManager)]
+    [Authorize(Policy = Policies.IsUmpireManager)]
     public async Task<ActionResult<UpdateTeamResponse>> UpdateTeamForTournament(
         [FromBody] UpdateTeamRequest request) {
         var tournament = await db.Tournaments
@@ -422,7 +424,7 @@ public class TeamsController(HandballContext db) : ControllerBase {
     }
 
     [HttpDelete("removeFromTournament")]
-    [TournamentAuthorize(PermissionType.UmpireManager)]
+    [Authorize(Policy = Policies.IsUmpireManager)]
     public async Task<ActionResult> RemoveTeamFromTournament([FromBody] RemoveTeamRequest request) {
         var tournament = await db.Tournaments
             .FirstOrDefaultAsync(a => a.SearchableName == request.Tournament);

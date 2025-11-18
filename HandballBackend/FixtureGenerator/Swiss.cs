@@ -17,7 +17,8 @@ public class Swiss : AbstractFixtureGenerator {
 
 
     public override async Task<bool> EndOfRound() {
-        var db = new HandballContext();
+        var db = ServiceLocator.Get<HandballContext>();
+        var gameManager = ServiceLocator.Get<IGameManagementService>();
 
         var tournament = (await db.Tournaments.FindAsync(_tournamentId))!;
         var (ladder, _, _) = await LadderHelper.GetTournamentLadder(db, tournament);
@@ -57,7 +58,7 @@ public class Swiss : AbstractFixtureGenerator {
         }
 
         foreach (var pairing in pairings) {
-            await GameManager.CreateGame(
+            await gameManager.CreateGame(
                 tournamentId: _tournamentId,
                 teamOneId: pairing.team1,
                 teamTwoId: pairing.team2,

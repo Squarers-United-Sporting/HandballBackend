@@ -1,4 +1,5 @@
 using HandballBackend.Database;
+using HandballBackend.EndpointHelpers;
 using HandballBackend.EndpointHelpers.GameManagement;
 using Microsoft.EntityFrameworkCore;
 
@@ -16,7 +17,8 @@ public class RoundRobin : AbstractFixtureGenerator {
 
 
     public override async Task<bool> EndOfRound() {
-        var db = new HandballContext();
+        var db = ServiceLocator.Get<HandballContext>();
+        var gameManager = ServiceLocator.Get<IGameManagementService>();
         var tournament = (await db.Tournaments.FindAsync(_tournamentId))!;
 
         var rounds = await db.Games
@@ -41,7 +43,8 @@ public class RoundRobin : AbstractFixtureGenerator {
         for (var i = 0; i < teams.Count / 2; i++) {
             var teamOne = teams[i];
             var teamTwo = teams[teams.Count - i - 1];
-            await GameManager.CreateGame(_tournamentId, teamOne.Id, teamTwo.Id, blitzGame: _blitz, round: rounds + 1);
+            await gameManager.CreateGame(_tournamentId, teamOne.Id, teamTwo.Id, blitzGame: _blitz,
+                round: rounds + 1);
         }
 
         await db.SaveChangesAsync();

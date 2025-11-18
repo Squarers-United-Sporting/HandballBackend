@@ -4,6 +4,7 @@ using HandballBackend.Authentication;
 using HandballBackend.Converters;
 using HandballBackend.Database.Models;
 using HandballBackend.EndpointHelpers;
+using HandballBackend.EndpointHelpers.GameManagement;
 using HandballBackend.ErrorTypes;
 using HandballBackend.Utils;
 using Microsoft.AspNetCore.Authentication;
@@ -26,17 +27,20 @@ builder.Services.AddDbContext<HandballContext>();
 builder.Services.AddSwaggerGen();
 
 builder.Services.AddSingleton<IEncryptionService, EncryptionService>();
+builder.Services.AddScoped<IGameManagementService, GameManagementService>();
 builder.Services.AddScoped<ICustomPermissionService, CustomPermissionService>();
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpLogging(o => { });
 builder.Services.AddAuthentication(options => {
-    options.DefaultAuthenticateScheme = "TokenAuthentication";
-    options.DefaultChallengeScheme = "TokenAuthentication";
-})
+        options.DefaultAuthenticateScheme = "TokenAuthentication";
+        options.DefaultChallengeScheme = "TokenAuthentication";
+    })
     .AddScheme<AuthenticationSchemeOptions, TokenAuthenticator>(
         "TokenAuthentication", null);
+
 builder.Services.AddAuthorization(Policies.RegisterPolicies);
+
 builder.Services.AddCors(options => {
     options.AddDefaultPolicy(policy => { policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod(); });
 });
@@ -59,7 +63,6 @@ if (Config.SAVE_ERRORS) {
     // app.UseExceptionHandler();
     app.UseExceptionLogging();
 }
-
 
 app.UseSwagger();
 app.UseSwaggerUI();
