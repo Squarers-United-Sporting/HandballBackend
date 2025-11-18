@@ -20,6 +20,7 @@ public class OfficialsController(HandballContext db, ICustomPermissionService pe
     }
 
     [HttpGet]
+    [TournamentSpecific("tournament")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<GetOfficialsResponse>> GetManyOfficials(
@@ -77,6 +78,7 @@ public class OfficialsController(HandballContext db, ICustomPermissionService pe
 
 
     [HttpGet("{searchable}")]
+    [TournamentSpecific("tournament")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<GetOfficialResponse>> GetOneOfficial(
@@ -122,6 +124,7 @@ public class OfficialsController(HandballContext db, ICustomPermissionService pe
     }
 
     [HttpPost("addToTournament")]
+    [TournamentSpecific("tournament")]
     [Authorize(Policy = Policies.IsUmpireManager)]
     public async Task<ActionResult> AddOfficialToTournament(
         [FromBody] AddOfficialRequest request) {
@@ -169,6 +172,7 @@ public class OfficialsController(HandballContext db, ICustomPermissionService pe
     }
 
     [Authorize(Policy = Policies.IsUmpireManager)]
+    [TournamentSpecific("tournament")]
     [HttpDelete("removeFromTournament")]
     public async Task<ActionResult> RemoveOfficialFromTournament([FromBody] RemoveOfficialRequest request) {
         var tournament = await db.Tournaments
@@ -211,6 +215,7 @@ public class OfficialsController(HandballContext db, ICustomPermissionService pe
 
     [Authorize(Policy = Policies.IsUmpireManager)]
     [HttpPost("updateForTournament")]
+    [TournamentSpecific("tournament")]
     public async Task<ActionResult> UpdateOfficialFromTournament([FromBody] UpdateOfficialRequest request) {
         var tournament = await db.Tournaments
             .FirstOrDefaultAsync(a => a.SearchableName == request.Tournament);

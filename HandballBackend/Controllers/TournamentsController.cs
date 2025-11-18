@@ -70,6 +70,7 @@ public class TournamentsController(HandballContext db) : ControllerBase {
     }
 
     [HttpGet("{searchable}")]
+    [TournamentSpecific("tournament")]
     public async Task<ActionResult<GetTournamentResponse>> GetOneTournament(string searchable) {
         var tournament = await db.Tournaments
             .FirstOrDefaultAsync(a => a.SearchableName == searchable);
@@ -85,6 +86,7 @@ public class TournamentsController(HandballContext db) : ControllerBase {
 
     [HttpPost("{searchable}/start")]
     [Authorize(Policy = Policies.IsTournamentDirector)]
+    [TournamentSpecific("searchable")]
     public async Task<ActionResult> StartTournament(string searchable) {
         var tournament = await db.Tournaments
             .FirstOrDefaultAsync(a => a.SearchableName == searchable);
@@ -97,6 +99,7 @@ public class TournamentsController(HandballContext db) : ControllerBase {
     }
 
     [HttpPost("{searchable}/finalsNextRound")]
+    [TournamentSpecific("searchable")]
     [Authorize(Policy = Policies.IsTournamentDirector)]
     public async Task<ActionResult> PutTournamentInFinals(string searchable) {
         var tournament = await db.Tournaments
@@ -162,6 +165,7 @@ public class TournamentsController(HandballContext db) : ControllerBase {
 
 
     [HttpPost("update")]
+    [TournamentSpecific("tournament")]
     [Authorize(Policy = Policies.IsAdmin)]
     public async Task<ActionResult> UpdateTournament([FromBody] UpdateTournamentRequest request) {
         if (!Utilities.TournamentOrElse(db, request.Tournament, out var tournament)) {

@@ -20,6 +20,7 @@ public class GamesController(HandballContext db, ICustomPermissionService permis
     }
 
     [HttpGet("change_code")]
+    [TournamentSpecific("id", isGame:true)]
     public ActionResult<ChangeCodeResponse> GetChangeCode(
         [FromQuery(Name = "id")] int gameNumber
     ) {
@@ -35,6 +36,7 @@ public class GamesController(HandballContext db, ICustomPermissionService permis
         public required GameData Game { get; set; }
     }
 
+    [TournamentSpecific("gameNumber", isGame:true)]
     [HttpGet("{gameNumber:int}")]
     public ActionResult<GetGameResponse> GetOneGame(
         int gameNumber,
@@ -73,6 +75,7 @@ public class GamesController(HandballContext db, ICustomPermissionService permis
         public TournamentData? Tournament { get; set; }
     }
 
+    [TournamentSpecific("tournament")]
     [HttpGet]
     public async Task<ActionResult<GetGamesResponse>> GetManyGames(
         [FromQuery(Name = "tournament")] string? tournamentSearchable,
@@ -171,6 +174,7 @@ public class GamesController(HandballContext db, ICustomPermissionService permis
         public TournamentData? Tournament { get; set; }
     }
 
+    [TournamentSpecific("tournament")]
     [HttpGet("count")]
     public async Task<ActionResult<GetGamesCountResponse>> GetGamesCount(
         [FromQuery(Name = "tournament")] string? tournamentSearchable,
@@ -248,6 +252,7 @@ public class GamesController(HandballContext db, ICustomPermissionService permis
         public TournamentData? Tournament { get; set; }
     }
 
+    [TournamentSpecific("tournament")]
     [HttpGet("noteable")]
     [Authorize(Policy = Policies.IsUmpireManager)]
     public async Task<ActionResult<GetNoteableResponse>> GetNoteableGames(
@@ -306,6 +311,7 @@ public class GamesController(HandballContext db, ICustomPermissionService permis
     }
 
     [HttpGet("fixtures")]
+    [TournamentSpecific("tournament")]
     public async Task<ActionResult<GetFixturesResponse>> GetFixtures(
         [BindRequired, FromQuery(Name = "tournament")]
         string tournamentSearchable,

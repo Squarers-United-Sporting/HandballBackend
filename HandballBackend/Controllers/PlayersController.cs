@@ -19,6 +19,7 @@ public class PlayersController(HandballContext db, ICustomPermissionService perm
 
 
     [HttpGet("{searchable}")]
+    [TournamentSpecific("tournament")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -65,6 +66,7 @@ public class PlayersController(HandballContext db, ICustomPermissionService perm
     [HttpGet]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [TournamentSpecific("tournament")]
     public async Task<ActionResult<GetPlayersResponse>> GetManyPlayers(
         [FromQuery] bool formatData = false,
         [FromQuery(Name = "tournament")] string? tournamentSearchable = null,
@@ -132,6 +134,7 @@ public class PlayersController(HandballContext db, ICustomPermissionService perm
     }
 
     [HttpGet("stats")]
+    [TournamentSpecific("tournament")]
     public async Task<ActionResult<GetStatsResponse>> GetAveragePlayerStats(
         [FromQuery] bool formatData = false,
         [FromQuery(Name = "tournament")] string? tournamentSearchable = null,

@@ -22,6 +22,7 @@ public class TeamsController(HandballContext db) : ControllerBase {
     [HttpGet("{searchable}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [TournamentSpecific("tournament")]
     public async Task<ActionResult<GetTeamResponse>> GetOneTeam(
         string searchable,
         [FromQuery(Name = "tournament")] string? tournamentSearchable = null,
@@ -71,6 +72,7 @@ public class TeamsController(HandballContext db) : ControllerBase {
     }
 
     [HttpGet]
+    [TournamentSpecific("tournament")]
     public async Task<ActionResult<GetTeamsResponse>> GetManyTeams(
         [FromQuery(Name = "tournament")] string? tournamentSearchable = null,
         [FromQuery] List<string>? player = null,
@@ -177,6 +179,7 @@ public class TeamsController(HandballContext db) : ControllerBase {
     }
 
     [HttpGet("ladder")]
+    [TournamentSpecific("tournament")]
     public async Task<ActionResult<GetLadderResponse>> GetLadder(
         [FromQuery(Name = "tournament")] string? tournamentSearchable = null,
         [FromQuery] bool formatData = false,
@@ -242,6 +245,7 @@ public class TeamsController(HandballContext db) : ControllerBase {
     }
 
     [HttpGet("standings")]
+    [TournamentSpecific("tournament")]
     public async Task<ActionResult<GetStandingsResult>> GetStandings(
         [FromQuery(Name = "tournament")] string tournamentSearchable,
         [FromQuery] bool returnTournament = false) {
@@ -285,6 +289,7 @@ public class TeamsController(HandballContext db) : ControllerBase {
     }
 
     [HttpPost("addToTournament")]
+    [TournamentSpecific("tournament")]
     [Authorize(Policy = Policies.IsUmpireManager)]
     public async Task<ActionResult<AddTeamResponse>> AddTeamToTournament(
         [FromBody] AddTeamRequest request) {
@@ -372,6 +377,7 @@ public class TeamsController(HandballContext db) : ControllerBase {
 
     [HttpPatch("updateForTournament")]
     [Authorize(Policy = Policies.IsUmpireManager)]
+    [TournamentSpecific("tournament")]
     public async Task<ActionResult<UpdateTeamResponse>> UpdateTeamForTournament(
         [FromBody] UpdateTeamRequest request) {
         var tournament = await db.Tournaments
@@ -425,6 +431,7 @@ public class TeamsController(HandballContext db) : ControllerBase {
 
     [HttpDelete("removeFromTournament")]
     [Authorize(Policy = Policies.IsUmpireManager)]
+    [TournamentSpecific("tournament")]
     public async Task<ActionResult> RemoveTeamFromTournament([FromBody] RemoveTeamRequest request) {
         var tournament = await db.Tournaments
             .FirstOrDefaultAsync(a => a.SearchableName == request.Tournament);
