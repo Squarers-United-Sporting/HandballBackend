@@ -7,6 +7,20 @@ public class OfficialData : PersonData {
     public int UmpireProficiency { get; set; }
     public int ScorerProficiency { get; set; }
 
+    public OfficialData(TournamentOfficial tournamentOfficial, bool includeStats = false,
+        bool isAdmin = false) : base(tournamentOfficial.Official.Person) {
+        Role = tournamentOfficial.Role;
+
+        if (isAdmin) {
+            UmpireProficiency = tournamentOfficial.UmpireProficiency;
+            ScorerProficiency = tournamentOfficial.ScorerProficiency;
+        }
+
+        if (!includeStats) return;
+
+        PopulateStats(tournamentOfficial.Official, tournamentOfficial.Tournament);
+    }
+
     public OfficialData(Official official, Tournament? tournament = null, bool includeStats = false,
         bool isAdmin = false) : base(
         official.Person) {
@@ -23,6 +37,10 @@ public class OfficialData : PersonData {
 
         if (!includeStats) return;
 
+        PopulateStats(official, tournament);
+    }
+
+    private void PopulateStats(Official official, Tournament? tournament) {
         var playerGameStats =
             official.Games
                 .Where(g => tournament == null || g.TournamentId == tournament.Id)
