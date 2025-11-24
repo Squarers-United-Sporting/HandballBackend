@@ -223,7 +223,7 @@ public class OfficialsController : ControllerBase {
         }
 
         if (tournament.Started) {
-            return NotFound("Tournament has already started!");
+            return BadRequest("Tournament has already started!");
         }
 
         var tournamentOfficial = await db.TournamentOfficials.FirstOrDefaultAsync(to =>
@@ -231,7 +231,7 @@ public class OfficialsController : ControllerBase {
 
 
         if (tournamentOfficial == null) {
-            return BadRequest("The Official doesn't exist");
+            return NotFound("The Official doesn't exist");
         }
 
         if (request.UmpireProficiency.HasValue) {
