@@ -12,6 +12,7 @@ public enum PermissionType {
     LoggedIn,
     Umpire,
     UmpireManager,
+    TournamentDirector,
     Admin,
 }
 
@@ -35,6 +36,7 @@ public static class PermissionHelper {
             PermissionType.LoggedIn => 1,
             PermissionType.Umpire => 2,
             PermissionType.UmpireManager => 3,
+            PermissionType.TournamentDirector => 4,
             PermissionType.Admin => 5,
             _ => throw new ArgumentOutOfRangeException(nameof(permissionType), permissionType, null)
         };
@@ -90,6 +92,7 @@ public static class PermissionHelper {
             1 => PermissionType.LoggedIn,
             2 => PermissionType.Umpire,
             3 => PermissionType.UmpireManager,
+            4 => PermissionType.TournamentDirector,
             5 => PermissionType.Admin,
             _ => throw new ArgumentOutOfRangeException(nameof(permissionType), permissionType, null)
         };
