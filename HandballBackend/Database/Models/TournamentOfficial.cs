@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using HandballBackend.Database.SendableTypes;
 using HandballBackend.Utils;
 using Microsoft.EntityFrameworkCore;
 
@@ -87,5 +88,9 @@ public class TournamentOfficial : IHasRelevant<TournamentOfficial> {
             .Include(to => to.Tournament)
             .Include(to => to.Official.Person)
             .Include(to => to.Official.TournamentOfficials);
+    }
+
+    public OfficialData ToSendableData(bool includeStats = false, bool isAdmin = false) {
+        return new OfficialData(this, includeStats, isAdmin);
     }
 }

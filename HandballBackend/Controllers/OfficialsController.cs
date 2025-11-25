@@ -29,8 +29,8 @@ public class OfficialsController(HandballContext db, ICustomPermissionService pe
         [FromQuery] int limit = -1,
         [FromQuery] int page = -1
     ) {
-        IQueryable<Official> query;
-
+        var db = new HandballContext();
+        OfficialData[] officialData;
 
         if (!Utilities.TournamentOrElse(db, tournamentSearchable, out var tournament)) {
             return NotFound(new InvalidTournament(tournamentSearchable));
@@ -39,34 +39,45 @@ public class OfficialsController(HandballContext db, ICustomPermissionService pe
         var isAdmin = permission.IsUmpireManager();
 
         if (tournament is not null) {
-            query = db.TournamentOfficials
+            IQueryable<TournamentOfficial> query = db.TournamentOfficials
                 .Where(a => a.TournamentId == tournament.Id)
                 .IncludeRelevant()
-                .OrderBy(p => p.Official.Person.SearchableName)
-                .Select(to => to.Official);
+                .Include(o => o.Official.TournamentOfficials);
+            if (page > 0) {
+                if (limit < 0) return BadRequest(new ActionNotAllowed("Cannot pass page without passing a limit"));
+                query = query.Skip(page * limit);
+            }
+
+            if (limit > 0) {
+                query = query.Take(limit);
+            }
+
+            officialData = await query.Select(to => to.ToSendableData(false, isAdmin)).ToArrayAsync();
+            officialData = officialData.OrderByDescending(o => o.Role)
+                .ThenBy(o => o.SearchableName).ToArray();
         } else {
-            query = db.Officials
+            IQueryable<Official> query = db.Officials
                 .IncludeRelevant()
                 .OrderBy(p => p.Person.SearchableName);
+            if (page > 0) {
+                if (limit < 0) return BadRequest(new ActionNotAllowed("Cannot pass page without passing a limit"));
+                query = query.Skip(page * limit);
+            }
+
+            if (limit > 0) {
+                query = query.Take(limit);
+            }
+
+            officialData = await query.Select(to => to.ToSendableData(null, false, isAdmin)).ToArrayAsync();
         }
 
         if (returnTournament && tournament is null) {
             return BadRequest(new TournamentNotProvidedForReturn());
         }
 
-        if (page > 0) {
-            if (limit < 0) return BadRequest(new ActionNotAllowed("Cannot pass page without passing a limit"));
-            query = query.Skip(page * limit);
-        }
-
-        if (limit > 0) {
-            query = query.Take(limit);
-        }
-
-        var officials = await query.Select(o => o.ToSendableData(null, false, isAdmin)).ToArrayAsync();
 
         return new GetOfficialsResponse {
-            Officials = officials,
+            Officials = officialData,
             Tournament = returnTournament ? tournament!.ToSendableData() : null
         };
     }
@@ -188,7 +199,6 @@ public class OfficialsController(HandballContext db, ICustomPermissionService pe
         var tournamentOfficial = await db.TournamentOfficials.FirstOrDefaultAsync(to =>
             to.TournamentId == tournament.Id && to.Official.Person.SearchableName == request.OfficialSearchableName);
 
-
         if (tournamentOfficial == null) {
             return BadRequest("The Official doesn't exist");
         }
@@ -224,7 +234,7 @@ public class OfficialsController(HandballContext db, ICustomPermissionService pe
         }
 
         if (tournament.Started) {
-            return NotFound("Tournament has already started!");
+            return BadRequest("Tournament has already started!");
         }
 
         var tournamentOfficial = await db.TournamentOfficials.FirstOrDefaultAsync(to =>
@@ -232,7 +242,7 @@ public class OfficialsController(HandballContext db, ICustomPermissionService pe
 
 
         if (tournamentOfficial == null) {
-            return BadRequest("The Official doesn't exist");
+            return NotFound("The Official doesn't exist");
         }
 
         if (request.UmpireProficiency.HasValue) {

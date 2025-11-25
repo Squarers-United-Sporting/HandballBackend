@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 set -uo pipefail
+ulimit -n 100000
 
 errors=0
 echo "Starting the server!!"
