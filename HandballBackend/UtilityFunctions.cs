@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 namespace HandballBackend;
 
 internal static class UtilityFunctions {
-    public static void init() {
+    private static void init() {
         Config.SECRETS_FOLDER =
             @"G:\Programming\c#\HandballBackend\build\secrets";
         Config.RESOURCES_FOLDER =
@@ -105,6 +105,7 @@ internal static class UtilityFunctions {
     }
 
     public static void EncryptString() {
+        init();
         string? x;
         do {
             Console.WriteLine("Enter the target string");
@@ -113,6 +114,48 @@ internal static class UtilityFunctions {
                 Console.WriteLine(EncryptionHelper.Encrypt(x));
             }
         } while (x != "x");
+    }
+
+    public static void GetPhoneNumbers() {
+        init();
+        var db = new HandballContext();
+        var people = db.People.ToList();
+        foreach (var person in people) {
+            Console.WriteLine($"{person.Name}: {person.PhoneNumber}");
+        }
+    }
+
+    public static void SetPhoneNumbers() {
+        init();
+        var db = new HandballContext();
+        var people = db.People.Where(p => p.PhoneNumber == null).ToList();
+        foreach (var person in people) {
+            Console.WriteLine($"Do you wish to add a phone number for {person.Name}?  (y/n)");
+            var shouldEdit = (Console.ReadLine() ?? "n").ToLower()[0] == 'y';
+            if (!shouldEdit) continue;
+            Console.WriteLine($"Enter Phone Number for {person.Name}");
+            var phoneNum = Console.ReadLine();
+            person.PhoneNumber = phoneNum;
+        }
+
+        db.SaveChanges();
+    }
+
+    public static void ResetPhoneNumbers() {
+        init();
+        var db = new HandballContext();
+        var people = db.People.ToList();
+        var numbers = people.ToDictionary(p => p.Id, p => p.PhoneNumber);
+        foreach (var person in people) {
+            person.PhoneNumber = null;
+        }
+
+        db.SaveChanges();
+        foreach (var person in people) {
+            person.PhoneNumber = numbers[person.Id];
+        }
+
+        db.SaveChanges();
     }
 
 
@@ -183,7 +226,7 @@ internal static class UtilityFunctions {
         foreach (var p in people) {
             Console.WriteLine($"Texting {p.Name}");
             tasks.Add(TextHelper.Text(p,
-                $"Hi {p.Name.Split(" ")[0]}!\n  Just a reminder that the 10th SUSS Championship is on at 5pm today at Manning Library (2 Conochie Cres). Don't forget to bring a jumper as it is set to get quite cold!\n\nThanks, and as always, Happy Balling!")
+                $"Hi {p.Name.Split(" ")[0]}!\n  Just a reminder that the 11th SUSS Championship is on at 5pm this Saturday at Manning Library (2 Conochie Cres). Don't forget to bring some sunscreen, as it could be quite warm!\n\nThanks, and as always, Happy Balling!")
             );
         }
 
@@ -313,9 +356,9 @@ internal static class UtilityFunctions {
                 .Select(to => new AbstractFixtureGenerator.OfficialContainer {
                     PlayerId = to.Official.PersonId,
                     OfficialId = to.OfficialId,
-                    GamesUmpired = to.Official.Games.Count(g => g is { TournamentId: tournamentId, Round: < round }),
+                    GamesUmpired = to.Official.Games.Count(g => g is {TournamentId: tournamentId, Round: < round}),
                     Name = to.Official.Person.Name,
-                    GamesScored = to.Official.ScoredGames.Count(g => g is { TournamentId: tournamentId, Round: < round }),
+                    GamesScored = to.Official.ScoredGames.Count(g => g is {TournamentId: tournamentId, Round: < round}),
                     UmpireProficiency = (AbstractFixtureGenerator.UmpiringProficiencies) to.UmpireProficiency,
                     ScorerProficiency = (AbstractFixtureGenerator.UmpiringProficiencies) to.ScorerProficiency,
                 }).OrderBy(o => o.GamesUmpired).ToList();
@@ -354,7 +397,7 @@ internal static class UtilityFunctions {
         Console.WriteLine("--------------------");
         Console.WriteLine($"Success: {AbstractFixtureGenerator.TrySolution(solutionArray, officials, force: true)}");
         Console.WriteLine("--------------------");
-        foreach (var game in solutionArray.SelectMany(g => new[] { g.Item1, g.Item2 })) {
+        foreach (var game in solutionArray.SelectMany(g => new[] {g.Item1, g.Item2})) {
             if (game == null) continue;
             Console.WriteLine($"Game {game.GameId} on Court {game.CourtId + 1}");
             Console.WriteLine($"\tPlayers: {string.Join(", ", game.PlayerIds)}");
