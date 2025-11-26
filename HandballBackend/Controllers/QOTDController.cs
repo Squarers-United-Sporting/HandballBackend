@@ -6,11 +6,10 @@ namespace HandballBackend.Controllers;
 
 [ApiController]
 [Route("/api/[controller]")]
-public class QOTDController : ControllerBase {
+public class QOTDController(HandballContext db) : ControllerBase {
     [HttpGet]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<ActionResult<QuoteOfTheDayData>> GetQotd() {
-        var db = new HandballContext();
         var today = DateTime.Today.DayOfYear;
         var quotes = await db.QuotesOfTheDay
             .ToArrayAsync();

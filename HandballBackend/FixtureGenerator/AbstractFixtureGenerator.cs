@@ -10,7 +10,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HandballBackend.FixtureGenerator;
 
-public abstract class AbstractFixtureGenerator(int tournamentId, bool fillOfficials, bool fillCourts) {
+public abstract class AbstractFixtureGenerator(
+    int tournamentId,
+    FixtureGeneratorService fixtureGen,
+    bool fillOfficials,
+    bool fillCourts) {
+
+    protected readonly FixtureGeneratorService FixtureGen = fixtureGen;
+
     public enum UmpiringProficiencies {
         BestOfficial = 3,
         MiddleOfficial = 2,
@@ -18,62 +25,6 @@ public abstract class AbstractFixtureGenerator(int tournamentId, bool fillOffici
         NotOfficial = 0,
         EmergencyOfficial = -1
     }
-
-    private static readonly Dictionary<string, Func<int, AbstractFixtureGenerator>> FixtureGenerators = new();
-    private static readonly Dictionary<string, Func<int, AbstractFixtureGenerator>> FinalsGenerators = new();
-    private static bool _isPopulated = false;
-
-    private static void Register(Func<int, AbstractFixtureGenerator> func, string name, bool isFinal) {
-        if (isFinal) {
-            FinalsGenerators[name] = func;
-        } else {
-            FixtureGenerators[name] = func;
-        }
-    }
-
-    private static void PopulateFixtures() {
-        _isPopulated = true;
-        Register(tid => new OneRound(tid), "OneRound", false);
-        Register(tid => new Pooled(tid), "Pooled", false);
-        Register(tid => new RoundRobin(tid), "RoundRobin", false);
-        Register(tid => new Swiss(tid), "Swiss", false);
-        Register(tid => new Pooled(tid, blitz: true), "PooledBlitz", false);
-        Register(tid => new RoundRobin(tid, blitz: true), "RoundRobinBlitz", false);
-
-
-        Register(tid => new PooledFinals(tid), "PooledFinals", true);
-        Register(tid => new BasicFinals(tid), "BasicFinals", true);
-        Register(tid => new TopThreeFinals(tid), "TopThreeFinals", true);
-    }
-
-    public static AbstractFixtureGenerator GetControllerByName(string name, int tournamentId) {
-        if (!_isPopulated) {
-            PopulateFixtures();
-        }
-
-        if (FixtureGenerators.TryGetValue(name, out var func) || FinalsGenerators.TryGetValue(name, out func)) {
-            return func(tournamentId);
-        }
-
-        throw new ArgumentException($"Unknown fixture generator {name}");
-    }
-
-    public static List<string> GetFixtureGeneratorNames() {
-        if (!_isPopulated) {
-            PopulateFixtures();
-        }
-
-        return FixtureGenerators.Keys.ToList();
-    }
-
-    public static List<string> GetFinalsGeneratorNames() {
-        if (!_isPopulated) {
-            PopulateFixtures();
-        }
-
-        return FinalsGenerators.Keys.ToList();
-    }
-
 
     public virtual async Task<bool> EndOfRound() {
         if (fillCourts) {
@@ -89,23 +40,24 @@ public abstract class AbstractFixtureGenerator(int tournamentId, bool fillOffici
 
     protected void EndTournament(
         string note = "Thank you for participating in the tournament! We look forward to seeing you next time.") {
-        var db = new HandballContext();
+        var backup = FixtureGen.Backup;
+        var db = FixtureGen.Context;
         var tournament = db.Tournaments.Find(tournamentId)!;
         tournament.Finished = true;
         tournament.Notes = note;
         db.SaveChanges();
-        _ = Task.Run(() => PostgresBackup.MakeTimestampedBackup("Post Tournament Backup"));
+        _ = Task.Run(() => backup.MakeTimestampedBackup("Post Tournament Backup"));
     }
 
     public virtual async Task BeginTournament() {
-        var db = new HandballContext();
+        var db = FixtureGen.Context;
         await EndOfRound();
         await db.SaveChangesAsync();
     }
 
 
     internal async Task AddCourts(int rounds = -1) {
-        var db = new HandballContext();
+        var db = FixtureGen.Context;
         // Get the highest round number
 
         if (rounds == -1) {
@@ -178,7 +130,7 @@ public abstract class AbstractFixtureGenerator(int tournamentId, bool fillOffici
     }
 
     private async Task AddUmpires() {
-        var db = new HandballContext();
+        var db = FixtureGen.Context;
         var games = await db.Games.Where(g => g.TournamentId == tournamentId && !g.Started && !g.IsBye)
             .IncludeRelevant().ToListAsync();
         if (games.Count <= 0) return;

@@ -87,7 +87,8 @@ public class Team : IHasRelevant<Team> {
             .Where(id => id.HasValue)
             .Select(id => id!.Value);
 
-        var allElos = EloCalculator.GetPlayerElos();
+        var allElos = EloService
+            .GetPlayerElos();
 
         return ids.Select(id => allElos.GetValueOrDefault(id, 1500)).DefaultIfEmpty(1500).Average();
     }

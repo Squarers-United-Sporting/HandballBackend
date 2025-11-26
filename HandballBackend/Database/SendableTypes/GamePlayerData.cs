@@ -35,8 +35,7 @@ public class GamePlayerData : PersonData {
         ActingSideOfCourt = pgs.SideOfCourt;
 
         if (pgs.Game is { Ended: false, Started: true }) {
-            var db = new HandballContext();
-            var teammates = db.PlayerGameStats.Where(pgs2 =>
+            var teammates = pgs.Game.Players.Where(pgs2 =>
                 pgs2.GameId == pgs.GameId &&
                 pgs2.TeamId == pgs.TeamId &&
                 pgs2.PlayerId != pgs.PlayerId);

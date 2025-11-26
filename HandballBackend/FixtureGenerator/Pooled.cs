@@ -1,5 +1,6 @@
 using HandballBackend.Database;
 using HandballBackend.Database.Models;
+using HandballBackend.EndpointHelpers;
 using HandballBackend.EndpointHelpers.GameManagement;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,13 +11,13 @@ public class Pooled : AbstractFixtureGenerator {
     private readonly bool _blitz;
 
 
-    public Pooled(int tournamentId, bool blitz = false) : base(tournamentId, true, true) {
+    public Pooled(int tournamentId, FixtureGeneratorService fixtureGen, bool blitz = false) : base(tournamentId, fixtureGen, true, true) {
         _tournamentId = tournamentId;
         _blitz = blitz;
     }
 
     public override async Task BeginTournament() {
-        var db = new HandballContext();
+        var db = FixtureGen.Context;
         var tournament = (await db.Tournaments.FindAsync(_tournamentId))!;
         tournament.IsPooled = true;
 
@@ -36,7 +37,8 @@ public class Pooled : AbstractFixtureGenerator {
     }
 
     public override async Task<bool> EndOfRound() {
-        var db = new HandballContext();
+        var db = FixtureGen.Context;
+        var gameManager = FixtureGen.GameManager;
         var tournament = (await db.Tournaments.FindAsync(_tournamentId))!;
         var tournamentTeams = await db.TournamentTeams
             .Where(t => t.TournamentId == _tournamentId)
@@ -74,14 +76,14 @@ public class Pooled : AbstractFixtureGenerator {
         for (var i = 0; i < poolOne.Count / 2; i++) {
             var teamOne = poolOne[i];
             var teamTwo = poolOne[poolOne.Count - i - 1];
-            await GameManager.CreateGame(_tournamentId, teamOne.Id, teamTwo.Id, blitzGame: _blitz,
+            await gameManager.CreateGame(_tournamentId, teamOne.Id, teamTwo.Id, blitzGame: _blitz,
                 round: rounds + 1);
         }
 
         for (var i = 0; i < poolTwo.Count / 2; i++) {
             var teamOne = poolTwo[i];
             var teamTwo = poolTwo[poolTwo.Count - i - 1];
-            await GameManager.CreateGame(_tournamentId, teamOne.Id, teamTwo.Id, blitzGame: _blitz,
+            await gameManager.CreateGame(_tournamentId, teamOne.Id, teamTwo.Id, blitzGame: _blitz,
                 round: rounds + 1);
         }
 

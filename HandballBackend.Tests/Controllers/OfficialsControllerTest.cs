@@ -1,8 +1,10 @@
 using System.Threading.Tasks;
 using HandballBackend.Controllers;
 using HandballBackend.Database.Models;
+using HandballBackend.EndpointHelpers;
 using HandballBackend.ErrorTypes;
 using JetBrains.Annotations;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -62,7 +64,8 @@ public class OfficialsControllerTest {
 
     [TestMethod]
     public async Task TestGetOneOfficial() {
-        var controller = new OfficialsController();
+        var db = new HandballContext();
+        var controller = new OfficialsController(db, new CustomPermissionService(db, null!));
         OfficialsController.GetOfficialResponse response = (await controller.GetOneOfficial("foo")).Value;
         Assert.IsNotNull(response);
         Assert.AreEqual("Foo", response.Official.Name);
@@ -72,7 +75,8 @@ public class OfficialsControllerTest {
 
     [TestMethod]
     public async Task TestGetOneOfficialBadTournamentName() {
-        var controller = new OfficialsController();
+        var db = new HandballContext();
+        var controller = new OfficialsController(db, new CustomPermissionService(db, null!));
         var response = (await controller.GetOneOfficial("foo", "a_name_not_existing")).Result;
         Assert.IsNotNull(response);
         var actual = response as NotFoundObjectResult;
@@ -83,7 +87,8 @@ public class OfficialsControllerTest {
 
     [TestMethod]
     public async Task TestGetOneOfficialBadName() {
-        var controller = new OfficialsController();
+        var db = new HandballContext();
+        var controller = new OfficialsController(db, new CustomPermissionService(db, null!));
         var response = (await controller.GetOneOfficial("a_name_not_existing")).Result;
         var actual = response as NotFoundObjectResult;
         Assert.IsNotNull(actual);

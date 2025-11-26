@@ -1,3 +1,3 @@
 namespace HandballBackend.FixtureGenerator;
 
-public class OneRound(int tournamentId) : AbstractFixtureGenerator(tournamentId, true, false);
+public class OneRound(int tournamentId, FixtureGeneratorService fixtureGen) : AbstractFixtureGenerator(tournamentId, fixtureGen, true, false);

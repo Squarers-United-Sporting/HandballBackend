@@ -9,7 +9,7 @@ namespace HandballBackend.Controllers;
 
 [ApiController]
 [Route("/api/[controller]")]
-public class AuthController : ControllerBase {
+public class AuthController(HandballContext db, ICustomPermissionService permission) : ControllerBase {
     public class LoginRequest {
         public required string UserID { get; set; }
         public required string Password { get; set; }
@@ -32,7 +32,6 @@ public class AuthController : ControllerBase {
     public ActionResult<LoginResponse> Login(
         [FromBody] LoginRequest loginRequest
     ) {
-        var db = new HandballContext();
         var userString = loginRequest.UserID;
         var userId = int.TryParse(userString, out var result)
             ? result
@@ -41,7 +40,7 @@ public class AuthController : ControllerBase {
         var password = loginRequest.Password;
         var longSession = loginRequest.LongSession;
         var tournaments = db.Tournaments.ToList();
-        var user = PermissionHelper.Login(userId, password, longSession);
+        var user = permission.Login(userId, password, longSession);
         if (user?.SessionToken is null) {
             return Unauthorized();
         }
@@ -81,7 +80,7 @@ public class AuthController : ControllerBase {
     [HttpPost("logout")]
     public Task<IActionResult> Logout() {
         var userId = int.Parse(HttpContext.User.Claims.Single(c => c.Type == CustomClaimTypes.Token).Value);
-        PermissionHelper.Logout(userId);
+        permission.Logout(userId);
         return Task.FromResult<IActionResult>(NoContent());
     }
 }

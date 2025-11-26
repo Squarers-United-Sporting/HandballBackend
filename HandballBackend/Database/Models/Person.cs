@@ -90,7 +90,7 @@ public class Person {
             }
         }
 
-        return EloCalculator.GetPlayerElos().GetValueOrDefault(Id, 1500);
+        return EloService.GetPlayerElos().GetValueOrDefault(Id, 1500);
     }
 
     public PersonData ToSendableData(

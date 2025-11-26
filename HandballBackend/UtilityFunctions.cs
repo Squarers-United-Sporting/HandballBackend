@@ -82,7 +82,7 @@ internal static class UtilityFunctions {
 
                 var myElo = pgs.TeamId == game.TeamOneId ? teamOneElo : teamTwoElo;
                 var oppElo = pgs.TeamId == game.TeamOneId ? teamTwoElo : teamOneElo;
-                var eloDelta = EloCalculator.CalculateEloDelta(myElo, oppElo, game.WinningTeamId == pgs.TeamId);
+                var eloDelta = EloService.CalculateEloDelta(myElo, oppElo, game.WinningTeamId == pgs.TeamId);
                 pgs.EloDelta = eloDelta;
                 playerElos[pgs.PlayerId] = initialElo + eloDelta;
             }
@@ -104,16 +104,6 @@ internal static class UtilityFunctions {
         db.SaveChanges();
     }
 
-    public static void EncryptString() {
-        string? x;
-        do {
-            Console.WriteLine("Enter the target string");
-            x = Console.ReadLine();
-            if (x != null && x != "x") {
-                Console.WriteLine(EncryptionHelper.Encrypt(x));
-            }
-        } while (x != "x");
-    }
 
 
     public static void ForceForfeitTournament() {
@@ -133,17 +123,17 @@ internal static class UtilityFunctions {
                 continue;
             }
 
-            GameManager.StartGame(i, false, null, null, true, null, null);
-            GameManager.Forfeit(i, false);
-            GameManager.End(
-                i,
-                game.Players.Select(p => p.Player.SearchableName).ToList(), 3, 3,
-                "Testing",
-                null,
-                null,
-                "",
-                "", false
-            );
+            // GameManagementService.StartGame(i, false, null, null, true, null, null);
+            // GameManagementService.Forfeit(i, false);
+            // GameManagementService.End(
+            //     i,
+            //     game.Players.Select(p => p.Player.SearchableName).ToList(), 3, 3,
+            //     "Testing",
+            //     null,
+            //     null,
+            //     "",
+            //     "", false
+            // );
             i++;
             game = db.Games.Include(game => game.Players).ThenInclude(playerGameStats => playerGameStats.Player)
                 .FirstOrDefault(g => g.GameNumber == i);
@@ -176,13 +166,14 @@ internal static class UtilityFunctions {
         init();
         if (ShouldExit("send a group text")) return;
         var db = new HandballContext();
+        var textingService = new TwilioTextingService(db);
         var people = db.TournamentTeams.Where(tt => tt.TournamentId == 11).IncludeRelevant().Select(t => t.Team)
             .ToArray()
             .SelectMany(t => t.People).ToList();
         var tasks = new List<Task>();
         foreach (var p in people) {
             Console.WriteLine($"Texting {p.Name}");
-            tasks.Add(TextHelper.Text(p,
+            tasks.Add(textingService.Text(p,
                 $"Hi {p.Name.Split(" ")[0]}!\n  Just a reminder that the 10th SUSS Championship is on at 5pm today at Manning Library (2 Conochie Cres). Don't forget to bring a jumper as it is set to get quite cold!\n\nThanks, and as always, Happy Balling!")
             );
         }
@@ -211,7 +202,7 @@ internal static class UtilityFunctions {
             Console.WriteLine($"Team {team.Name}");
         }
 
-        var tasks = list.Select(t => ImageHelper.SetGoogleImageForTeam(t.Id)).ToList();
+        var tasks = list.Select(t => ImageHelper.SetGoogleImageForTeam(db, t.Id)).ToList();
         Task.WaitAll(tasks.ToArray());
     }
 
@@ -266,7 +257,7 @@ internal static class UtilityFunctions {
             }
 
             var pgs = game.Players.First(pgs => pgs.PlayerId == bestPlayerId);
-            var newEvent = GameManager.SetUpGameEvent(game, GameEventType.Votes, pgs.TeamId == game.TeamOneId,
+            var newEvent = GameManagementService.SetUpGameEvent(game, GameEventType.Votes, pgs.TeamId == game.TeamOneId,
                 pgs.PlayerId, details: 2);
             newEvent.CreatedAt = endEvent.CreatedAt;
             db.Add(newEvent);

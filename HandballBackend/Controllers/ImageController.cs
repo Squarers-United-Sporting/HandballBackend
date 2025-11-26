@@ -12,7 +12,7 @@ namespace HandballBackend.Controllers;
 
 [ApiController]
 [Route("api/")]
-public class ImageController : ControllerBase {
+public class ImageController(HandballContext db) : ControllerBase {
     // GET api/values
     [HttpGet("image")]
     public IActionResult GetImage([BindRequired, FromQuery] string name, [FromQuery] bool big) {
@@ -49,7 +49,6 @@ public class ImageController : ControllerBase {
     [Authorize(Policy = Policies.IsAdmin)]
     public IActionResult UploadPeopleImage(List<IFormFile> file) {
         // Handball Contexts are used to access the db
-        var db = new HandballContext();
         if (file.Count != 1) {
             //when we receive a file it's a list for some reason; we only want 1 file
             return BadRequest("Only one image is allowed");
@@ -81,7 +80,6 @@ public class ImageController : ControllerBase {
     public ActionResult<UploadTeamImageResponse> UploadTeamImage([FromForm] List<IFormFile> file,
         [FromForm] string? tournament) {
         // Handball Contexts are used to access the db
-        var db = new HandballContext();
         if (file.Count != 1) {
             //when we receive a file it's a list for some reason; we only want 1 file
             return BadRequest("Only one image is allowed");
@@ -121,7 +119,6 @@ public class ImageController : ControllerBase {
     [Authorize(Policy = Policies.IsAdmin)]
     public ActionResult<UploadTournamentImageResponse> UploadTournamentImage([FromForm] List<IFormFile> file) {
         // Handball Contexts are used to access the db
-        var db = new HandballContext();
         if (file.Count != 1) {
             //when we receive a file it's a list for some reason; we only want 1 file
             return BadRequest("Only one image is allowed");

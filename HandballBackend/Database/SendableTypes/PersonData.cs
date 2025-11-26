@@ -142,13 +142,14 @@ public class PersonData {
                     Stats["Games Started Substitute"] += 1;
                     break;
             }
+
             Stats["Nefarious Votes"] += pgs.Demerits;
         }
 
         var tournaments = new HashSet<int>();
         tournaments.UnionWith(playedTournaments);
-        if (tournament == null && person.Official is not null) {
-            var umpiredTournaments = person.Official!.TournamentOfficials.Where(to => to.Tournament.Started)
+        if (tournament == null && person.Official?.TournamentOfficials.FirstOrDefault()?.Tournament != null) {
+            var umpiredTournaments = person.Official.TournamentOfficials.Where(to => to.Tournament.Started)
                 .Select(to => to.TournamentId).ToHashSet();
             tournaments.UnionWith(umpiredTournaments);
             tournaments.Remove(1);

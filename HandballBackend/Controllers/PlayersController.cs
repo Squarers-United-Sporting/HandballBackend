@@ -11,7 +11,7 @@ namespace HandballBackend.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class PlayersController() : ControllerBase {
+public class PlayersController(HandballContext db, ICustomPermissionService permission) : ControllerBase {
     public record GetPlayerResponse {
         public required PersonData Player { get; set; }
         public TournamentData? Tournament { get; set; }
@@ -19,6 +19,7 @@ public class PlayersController() : ControllerBase {
 
 
     [HttpGet("{searchable}")]
+    [TournamentSpecific("tournament")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -28,12 +29,11 @@ public class PlayersController() : ControllerBase {
         [FromQuery(Name = "tournament")] string? tournamentSearchable = null,
         [FromQuery] bool returnTournament = false
     ) {
-        var db = new HandballContext();
         if (!Utilities.TournamentOrElse(db, tournamentSearchable, out var tournament)) {
             return NotFound(new InvalidTournament(tournamentSearchable));
         }
 
-        var isAdmin = PermissionHelper.IsUmpireManager(tournament);
+        var isAdmin = permission.IsUmpireManager();
 
         var player = await db.People
             .Where(t => t.SearchableName == searchable)
@@ -66,6 +66,7 @@ public class PlayersController() : ControllerBase {
     [HttpGet]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [TournamentSpecific("tournament")]
     public async Task<ActionResult<GetPlayersResponse>> GetManyPlayers(
         [FromQuery] bool formatData = false,
         [FromQuery(Name = "tournament")] string? tournamentSearchable = null,
@@ -75,7 +76,6 @@ public class PlayersController() : ControllerBase {
         [FromQuery] int limit = -1,
         [FromQuery] int page = -1
     ) {
-        var db = new HandballContext();
         IQueryable<Person> query;
         Team? teamObj = null;
 
@@ -91,7 +91,7 @@ public class PlayersController() : ControllerBase {
         }
 
         if (tournament is not null) {
-            query = tournament.GetPeopleInTournament()
+            query = tournament.GetPeopleInTournament(db)
                 .Include(p => p.PlayerGameStats)!
                 .ThenInclude(pgs => pgs.Game);
         } else {
@@ -103,7 +103,7 @@ public class PlayersController() : ControllerBase {
                 .Where(p => p.SearchableName != "worstie");
         }
 
-        var isAdmin = PermissionHelper.IsUmpireManager(tournament);
+        var isAdmin = permission.IsUmpireManager();
         if (page > 0) {
             if (limit < 0) return BadRequest(new ActionNotAllowed("Cannot pass page without passing a limit"));
             query = query.Skip(page * limit);
@@ -134,12 +134,12 @@ public class PlayersController() : ControllerBase {
     }
 
     [HttpGet("stats")]
+    [TournamentSpecific("tournament")]
     public async Task<ActionResult<GetStatsResponse>> GetAveragePlayerStats(
         [FromQuery] bool formatData = false,
         [FromQuery(Name = "tournament")] string? tournamentSearchable = null,
         [FromQuery] bool returnTournament = false,
         [FromQuery] int? gameNumber = null) {
-        var db = new HandballContext();
         if (!Utilities.TournamentOrElse(db, tournamentSearchable, out var tournament)) {
             return NotFound(new InvalidTournament(tournamentSearchable));
         }
@@ -173,6 +173,7 @@ public class PlayersController() : ControllerBase {
                         )
                     )
                     .ThenInclude(pgs => pgs.Game)
+                    .Include(p => p.Official.TournamentOfficials)
                     .ToArrayAsync())
                 .Select(p => p.ToSendableData(null, true).Stats!).ToList();
         }

@@ -1,9 +1,10 @@
 using System.Security.Cryptography;
 using System.Text;
+using HandballBackend.Events;
 
 namespace HandballBackend.EndpointHelpers;
 
-public static class EncryptionHelper {
+public class EncryptionHelper {
     private static byte[] Key() {
         return Convert.FromBase64String(
             File.ReadAllText(Config.SECRETS_FOLDER + "/PhoneNumberKey.txt")

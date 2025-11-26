@@ -8,12 +8,14 @@ public class TopThreeFinals : AbstractFixtureGenerator {
     private readonly int _tournamentId;
 
 
-    public TopThreeFinals(int tournamentId) : base(tournamentId, true, true) {
+    public TopThreeFinals(int tournamentId, FixtureGeneratorService fixtureGen) : base(tournamentId, fixtureGen, true,
+        true) {
         _tournamentId = tournamentId;
     }
 
     public override async Task<bool> EndOfRound() {
-        var db = new HandballContext();
+        var db = FixtureGen.Context;
+        var gameManager = FixtureGen.GameManager;
         var tournament = (await db.Tournaments.FindAsync(_tournamentId))!;
 
         var finalsGames = await db.Games.Where(g => g.TournamentId == _tournamentId && g.IsFinal).OrderBy(g => g.Id)
@@ -26,12 +28,12 @@ public class TopThreeFinals : AbstractFixtureGenerator {
 
         var (ladder, _, _) = await LadderHelper.GetTournamentLadder(db, tournament);
         if (finalsGames.Count != 0) {
-            await GameManager.CreateGame(_tournamentId, ladder![0].Id, finalsGames[0].WinningTeamId!.Value,
+            await gameManager.CreateGame(_tournamentId, ladder![0].Id, finalsGames[0].WinningTeamId!.Value,
                 isFinal: true, round: finalsGames[0].Round + 1);
         } else {
             var lastGame = await db.Games.Where(g => g.TournamentId == _tournamentId).OrderByDescending(g => g.Id)
                 .FirstAsync();
-            await GameManager.CreateGame(_tournamentId, ladder![1].Id, ladder[2].Id, isFinal: true,
+            await gameManager.CreateGame(_tournamentId, ladder![1].Id, ladder[2].Id, isFinal: true,
                 round: lastGame.Round + 1);
         }
 

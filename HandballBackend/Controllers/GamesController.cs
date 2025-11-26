@@ -1,9 +1,11 @@
+using HandballBackend.Authentication;
 using HandballBackend.Database;
 using HandballBackend.Database.Models;
 using HandballBackend.Database.SendableTypes;
 using HandballBackend.EndpointHelpers;
 using HandballBackend.ErrorTypes;
 using HandballBackend.Utils;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.EntityFrameworkCore;
@@ -12,16 +14,16 @@ namespace HandballBackend.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class GamesController() : ControllerBase {
+public class GamesController(HandballContext db, ICustomPermissionService permission) : ControllerBase {
     public record ChangeCodeResponse {
         public int Code { get; set; }
     }
 
     [HttpGet("change_code")]
+    [TournamentSpecific("id", isGame: true)]
     public ActionResult<ChangeCodeResponse> GetChangeCode(
         [FromQuery(Name = "id")] int gameNumber
     ) {
-        var db = new HandballContext();
         var query = db.GameEvents.Where(gE => gE.Game.GameNumber == gameNumber).OrderByDescending(gE => gE.Id)
             .Select(gE => gE.Id).FirstOrDefault();
 
@@ -34,6 +36,7 @@ public class GamesController() : ControllerBase {
         public required GameData Game { get; set; }
     }
 
+    [TournamentSpecific("gameNumber", isGame: true)]
     [HttpGet("{gameNumber:int}")]
     public ActionResult<GetGameResponse> GetOneGame(
         int gameNumber,
@@ -41,7 +44,6 @@ public class GamesController() : ControllerBase {
         [FromQuery] bool includeStats = false,
         [FromQuery] bool formatData = false
     ) {
-        var db = new HandballContext();
         var isAdmin = HttpContext.User.IsInRole(nameof(PermissionType.UmpireManager));
 
         var game = db.Games
@@ -54,7 +56,7 @@ public class GamesController() : ControllerBase {
             return NotFound(new DoesNotExist("Game", gameNumber.ToString()));
         }
 
-        var isUmpire = PermissionHelper.IsUmpire(game);
+        var isUmpire = permission.IsUmpire();
         var cards = db.GameEvents.Where(gE =>
             gE.TournamentId == game.TournamentId
             && GameEvent.CardTypes.Contains(gE.EventType)
@@ -73,6 +75,7 @@ public class GamesController() : ControllerBase {
         public TournamentData? Tournament { get; set; }
     }
 
+    [TournamentSpecific("tournament")]
     [HttpGet]
     public async Task<ActionResult<GetGamesResponse>> GetManyGames(
         [FromQuery(Name = "tournament")] string? tournamentSearchable,
@@ -88,8 +91,6 @@ public class GamesController() : ControllerBase {
         [FromQuery] int limit = -1,
         [FromQuery] int page = -1
     ) {
-        var db = new HandballContext();
-
 
         if (!Utilities.TournamentOrElse(db, tournamentSearchable, out var tournament)) {
             return NotFound(new InvalidTournament(tournamentSearchable));
@@ -101,7 +102,7 @@ public class GamesController() : ControllerBase {
             query = query.Where(g => g.TournamentId == tournament.Id);
         }
 
-        var isAdmin = PermissionHelper.IsUmpireManager(tournament);
+        var isAdmin = permission.IsUmpireManager();
         if (!includeByes) {
             query = query.Where(g => !g.IsBye);
         }
@@ -173,6 +174,7 @@ public class GamesController() : ControllerBase {
         public TournamentData? Tournament { get; set; }
     }
 
+    [TournamentSpecific("tournament")]
     [HttpGet("count")]
     public async Task<ActionResult<GetGamesCountResponse>> GetGamesCount(
         [FromQuery(Name = "tournament")] string? tournamentSearchable,
@@ -185,9 +187,6 @@ public class GamesController() : ControllerBase {
         [FromQuery] int limit = -1,
         [FromQuery] int page = -1
     ) {
-        var db = new HandballContext();
-
-
         if (!Utilities.TournamentOrElse(db, tournamentSearchable, out var tournament)) {
             return NotFound(new InvalidTournament(tournamentSearchable));
         }
@@ -253,8 +252,9 @@ public class GamesController() : ControllerBase {
         public TournamentData? Tournament { get; set; }
     }
 
+    [TournamentSpecific("tournament")]
     [HttpGet("noteable")]
-    [TournamentAuthorize(PermissionType.UmpireManager)]
+    [Authorize(Policy = Policies.IsUmpireManager)]
     public async Task<ActionResult<GetNoteableResponse>> GetNoteableGames(
         [FromQuery(Name = "tournament")] string? tournamentSearchable = null,
         [FromQuery] bool includeGameEvents = false,
@@ -264,8 +264,6 @@ public class GamesController() : ControllerBase {
         [FromQuery] int limit = -1,
         [FromQuery] int page = -1
     ) {
-        var db = new HandballContext();
-
         if (!Utilities.TournamentOrElse(db, tournamentSearchable, out var tournament)) {
             return NotFound(new InvalidTournament(tournamentSearchable));
         }
@@ -313,6 +311,7 @@ public class GamesController() : ControllerBase {
     }
 
     [HttpGet("fixtures")]
+    [TournamentSpecific("tournament")]
     public async Task<ActionResult<GetFixturesResponse>> GetFixtures(
         [BindRequired, FromQuery(Name = "tournament")]
         string tournamentSearchable,
@@ -320,12 +319,11 @@ public class GamesController() : ControllerBase {
         [FromQuery] bool separateFinals = false,
         [FromQuery] int maxRounds = -1
     ) {
-        var db = new HandballContext();
         if (!Utilities.TournamentOrElse(db, tournamentSearchable, out var tournament)) {
             return NotFound(new InvalidTournament(tournamentSearchable));
         }
 
-        var isAdmin = PermissionHelper.IsUmpireManager(tournament);
+        var isAdmin = permission.IsUmpireManager();
 
 
         var query = db.Games.Where(g => g.GameNumber > -2 && g.TournamentId == tournament!.Id).IncludeRelevant()
@@ -334,7 +332,7 @@ public class GamesController() : ControllerBase {
         query = query.OrderBy(g => g.Id);
 
 
-        var isUmpire = PermissionHelper.IsUmpireManager(tournament);
+        var isUmpire = permission.IsUmpire();
         var games = await query.Select(g => g.ToSendableData(false, false, false, false, isUmpire, isAdmin))
             .ToArrayAsync();
 

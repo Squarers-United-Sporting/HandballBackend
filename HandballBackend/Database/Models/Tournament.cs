@@ -88,35 +88,8 @@ public class Tournament {
 
     public List<TournamentOfficial> Officials { get; set; }
 
-    public async Task EndRound() {
-        var finals = InFinals;
-        if (!finals) {
-            finals = await GetFixtureGenerator.EndOfRound();
-        }
 
-        if (finals && !Finished) {
-            await GetFinalGenerator.EndOfRound();
-        }
-    }
-
-    public async Task BeginTournament() {
-        var db = new HandballContext();
-        (await db.Tournaments.FindAsync(Id))!.Started = true;
-        await db.SaveChangesAsync();
-        await GetFixtureGenerator.BeginTournament();
-    }
-
-    [NotMapped]
-    public AbstractFixtureGenerator GetFinalGenerator =>
-        AbstractFixtureGenerator.GetControllerByName(FinalsType, Id);
-
-    [NotMapped]
-    public AbstractFixtureGenerator GetFixtureGenerator =>
-        AbstractFixtureGenerator.GetControllerByName(FixturesType, Id);
-
-
-    public IQueryable<Person> GetPeopleInTournament() {
-        var db = new HandballContext();
+    public IQueryable<Person> GetPeopleInTournament(HandballContext db) {
         var captainIds = db
             .TournamentTeams.Where(tt => tt.TournamentId == Id)
             .Select(tt => tt.Team.CaptainId);

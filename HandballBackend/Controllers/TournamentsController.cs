@@ -14,7 +14,7 @@ namespace HandballBackend.Controllers;
 
 [ApiController]
 [Route("/api/[controller]")]
-public class TournamentsController : ControllerBase {
+public class TournamentsController(HandballContext db, IFixtureGeneratorService fixtureGen) : ControllerBase {
     public record GetTournamentsResponse {
         public required TournamentData[] Tournaments { get; set; }
     }
@@ -27,7 +27,6 @@ public class TournamentsController : ControllerBase {
         [FromQuery(Name = "player")] List<string>? players = null,
         [FromQuery(Name = "team")] List<string>? teams = null,
         [FromQuery(Name = "official")] List<string>? officials = null) {
-        var db = new HandballContext();
         IQueryable<Tournament> query = db.Tournaments
             .OrderBy(t => t.Id);
 
@@ -71,8 +70,8 @@ public class TournamentsController : ControllerBase {
     }
 
     [HttpGet("{searchable}")]
+    [TournamentSpecific("tournament")]
     public async Task<ActionResult<GetTournamentResponse>> GetOneTournament(string searchable) {
-        var db = new HandballContext();
         var tournament = await db.Tournaments
             .FirstOrDefaultAsync(a => a.SearchableName == searchable);
         if (tournament is null) {
@@ -86,23 +85,28 @@ public class TournamentsController : ControllerBase {
 
 
     [HttpPost("{searchable}/start")]
-    [TournamentAuthorize(PermissionType.UmpireManager)]
+    [Authorize(Policy = Policies.IsTournamentDirector)]
+    [TournamentSpecific("searchable")]
     public async Task<ActionResult> StartTournament(string searchable) {
-        var db = new HandballContext();
         var tournament = await db.Tournaments
             .FirstOrDefaultAsync(a => a.SearchableName == searchable);
         if (tournament is null) {
             return NotFound("Invalid Tournament");
         }
 
-        await tournament.BeginTournament();
+        if (tournament.Started) {
+            return BadRequest(new ActionNotAllowed("Cannot start a tournament which has already started"));
+        }
+
+        await fixtureGen.BeginTournament(tournament);
+
         return Ok();
     }
 
     [HttpPost("{searchable}/finalsNextRound")]
-    [TournamentAuthorize(PermissionType.UmpireManager)]
+    [TournamentSpecific("searchable")]
+    [Authorize(Policy = Policies.IsTournamentDirector)]
     public async Task<ActionResult> PutTournamentInFinals(string searchable) {
-        var db = new HandballContext();
         var tournament = await db.Tournaments
             .FirstOrDefaultAsync(a => a.SearchableName == searchable);
         if (tournament is null) {
@@ -132,7 +136,6 @@ public class TournamentsController : ControllerBase {
     [HttpPost("create")]
     [Authorize(Policy = Policies.IsAdmin)]
     public async Task<ActionResult> CreateTournament([FromBody] CreateTournamentRequest request) {
-        var db = new HandballContext();
         var tournament = new Tournament {
             Name = request.Name,
             SearchableName = Utilities.ToSearchable(request.Name),
@@ -167,10 +170,9 @@ public class TournamentsController : ControllerBase {
 
 
     [HttpPost("update")]
+    [TournamentSpecific("tournament")]
     [Authorize(Policy = Policies.IsAdmin)]
     public async Task<ActionResult> UpdateTournament([FromBody] UpdateTournamentRequest request) {
-        var db = new HandballContext();
-
         if (!Utilities.TournamentOrElse(db, request.Tournament, out var tournament)) {
             return NotFound(new InvalidTournament($"The Tournament {request.Tournament} does not exist"));
         }
@@ -216,8 +218,8 @@ public class TournamentsController : ControllerBase {
     [HttpGet("fixtureTypes")]
     public ActionResult<FixtureTypesResponse> GetFixtureTypes() {
         return new FixtureTypesResponse {
-            FixturesTypes = AbstractFixtureGenerator.GetFixtureGeneratorNames(),
-            FinalsTypes = AbstractFixtureGenerator.GetFinalsGeneratorNames()
+            FixturesTypes = fixtureGen.GetFixtureGeneratorNames(),
+            FinalsTypes = fixtureGen.GetFinalsGeneratorNames()
         };
     }
 }

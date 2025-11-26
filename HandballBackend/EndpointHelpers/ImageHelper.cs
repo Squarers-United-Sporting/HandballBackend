@@ -63,8 +63,7 @@ public static class ImageHelper {
         return $"/api/tournaments/image?name={searchableName}";
     }
 
-    public static async Task SetGoogleImageForTeam(int teamId) {
-        var db = new HandballContext();
+    public static async Task SetGoogleImageForTeam(HandballContext db, int teamId) {
         var team = (await db.Teams.FindAsync(teamId))!;
         var imageLink = await GetGoogleImageUrl(team.Name);
         if (imageLink == null)
