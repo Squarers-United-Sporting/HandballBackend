@@ -51,38 +51,6 @@ public class TournamentOfficial : IHasRelevant<TournamentOfficial> {
     public required int ScorerProficiency { get; set; }
 
 
-    [NotMapped]
-    public int GamesUmpired {
-        get {
-            using var db = new HandballContext();
-            return db.Games.Count(g => g.TournamentId == TournamentId && g.OfficialId == OfficialId);
-        }
-    }
-
-    [NotMapped]
-    public int CourtOneGamesUmpired {
-        get {
-            using var db = new HandballContext();
-            return db.Games.Count(g => g.Court == 0 && g.TournamentId == TournamentId && g.OfficialId == OfficialId);
-        }
-    }
-
-    [NotMapped]
-    public int CourtTwoGamesUmpired {
-        get {
-            using var db = new HandballContext();
-            return db.Games.Count(g => g.Court == 1 && g.TournamentId == TournamentId && g.OfficialId == OfficialId);
-        }
-    }
-
-    [NotMapped]
-    public int GamesScored {
-        get {
-            using var db = new HandballContext();
-            return db.Games.Count(g => g.TournamentId == TournamentId && g.ScorerId == OfficialId);
-        }
-    }
-
     public static IQueryable<TournamentOfficial> GetRelevant(IQueryable<TournamentOfficial> query) {
         return query
             .Include(to => to.Tournament)

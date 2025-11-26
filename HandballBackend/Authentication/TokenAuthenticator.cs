@@ -29,7 +29,6 @@ public class TokenAuthenticator : AuthenticationHandler<AuthenticationSchemeOpti
         }
 
         var tournamentLocation = Request.HttpContext.GetEndpoint()?.Metadata.GetMetadata<TournamentSpecificAttribute>();
-        Console.WriteLine(tournamentLocation);
         var token = Request.Headers.Authorization.ToString().Split(" ")[1];
         var person = _permissions.PersonByToken(token);
 

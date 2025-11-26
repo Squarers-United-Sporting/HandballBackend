@@ -14,7 +14,7 @@ namespace HandballBackend.Controllers;
 
 [ApiController]
 [Route("/api/[controller]")]
-public class TournamentsController(HandballContext db) : ControllerBase {
+public class TournamentsController(HandballContext db, IFixtureGeneratorService fixtureGen) : ControllerBase {
     public record GetTournamentsResponse {
         public required TournamentData[] Tournaments { get; set; }
     }
@@ -94,7 +94,12 @@ public class TournamentsController(HandballContext db) : ControllerBase {
             return NotFound("Invalid Tournament");
         }
 
-        await tournament.BeginTournament();
+        if (tournament.Started) {
+            return BadRequest(new ActionNotAllowed("Cannot start a tournament which has already started"));
+        }
+
+        await fixtureGen.BeginTournament(tournament);
+
         return Ok();
     }
 
@@ -213,8 +218,8 @@ public class TournamentsController(HandballContext db) : ControllerBase {
     [HttpGet("fixtureTypes")]
     public ActionResult<FixtureTypesResponse> GetFixtureTypes() {
         return new FixtureTypesResponse {
-            FixturesTypes = AbstractFixtureGenerator.GetFixtureGeneratorNames(),
-            FinalsTypes = AbstractFixtureGenerator.GetFinalsGeneratorNames()
+            FixturesTypes = fixtureGen.GetFixtureGeneratorNames(),
+            FinalsTypes = fixtureGen.GetFinalsGeneratorNames()
         };
     }
 }

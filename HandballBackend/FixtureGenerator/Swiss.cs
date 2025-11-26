@@ -11,14 +11,14 @@ public class Swiss : AbstractFixtureGenerator {
     private readonly int _tournamentId;
 
 
-    public Swiss(int tournamentId) : base(tournamentId, true, true) {
+    public Swiss(int tournamentId, FixtureGeneratorService fixtureGen) : base(tournamentId, fixtureGen, true, true) {
         _tournamentId = tournamentId;
     }
 
 
     public override async Task<bool> EndOfRound() {
-        var db = ServiceLocator.Get<HandballContext>();
-        var gameManager = ServiceLocator.Get<IGameManagementService>();
+        var db = FixtureGen.Context;
+        var gameManager = FixtureGen.GameManager;
 
         var tournament = (await db.Tournaments.FindAsync(_tournamentId))!;
         var (ladder, _, _) = await LadderHelper.GetTournamentLadder(db, tournament);

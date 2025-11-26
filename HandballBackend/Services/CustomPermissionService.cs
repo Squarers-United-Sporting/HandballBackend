@@ -165,7 +165,6 @@ public class CustomPermissionService(HandballContext db, IHttpContextAccessor co
 
 
     public void SetPassword(int personId, string password) {
-        using var db = new HandballContext();
         if (!PersonOrElse(db, personId, out var person)) {
             throw new KeyNotFoundException($"Person with id {personId} not found");
         }
@@ -180,7 +179,6 @@ public class CustomPermissionService(HandballContext db, IHttpContextAccessor co
             return null;
         }
 
-        using var db = new HandballContext();
         if (!PersonOrElse(db, personId, out var person)) {
             return null;
         }

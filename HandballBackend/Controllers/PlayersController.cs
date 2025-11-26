@@ -91,7 +91,7 @@ public class PlayersController(HandballContext db, ICustomPermissionService perm
         }
 
         if (tournament is not null) {
-            query = tournament.GetPeopleInTournament()
+            query = tournament.GetPeopleInTournament(db)
                 .Include(p => p.PlayerGameStats)!
                 .ThenInclude(pgs => pgs.Game);
         } else {
@@ -173,6 +173,7 @@ public class PlayersController(HandballContext db, ICustomPermissionService perm
                         )
                     )
                     .ThenInclude(pgs => pgs.Game)
+                    .Include(p => p.Official.TournamentOfficials)
                     .ToArrayAsync())
                 .Select(p => p.ToSendableData(null, true).Stats!).ToList();
         }

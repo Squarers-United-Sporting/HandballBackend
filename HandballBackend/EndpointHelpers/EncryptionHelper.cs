@@ -1,21 +1,17 @@
 using System.Security.Cryptography;
 using System.Text;
+using HandballBackend.Events;
 
 namespace HandballBackend.EndpointHelpers;
 
-public interface IEncryptionService {
-    string Encrypt(string plaintext);
-    string Decrypt(string ciphertext);
-}
-
-public class EncryptionService: IEncryptionService {
+public class EncryptionHelper {
     private static byte[] Key() {
         return Convert.FromBase64String(
             File.ReadAllText(Config.SECRETS_FOLDER + "/PhoneNumberKey.txt")
         );
     }
 
-    public string Encrypt(string plaintext) {
+    public static string Encrypt(string plaintext) {
         using var aesAlg = Aes.Create();
         aesAlg.Key = Key();
         //TODO: this is NOT secure!! however, if we randomly generate this IV, we can not search the database by phone #
@@ -31,7 +27,7 @@ public class EncryptionService: IEncryptionService {
         return Convert.ToBase64String(msEncrypt.ToArray());
     }
 
-    public string Decrypt(string ciphertext) {
+    public static string Decrypt(string ciphertext) {
         var cipherBytes = Convert.FromBase64String(ciphertext);
         using var aesAlg = Aes.Create();
         aesAlg.Key = Key();

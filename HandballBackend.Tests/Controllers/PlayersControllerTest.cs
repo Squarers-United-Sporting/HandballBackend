@@ -87,7 +87,7 @@ public class PlayersControllerTest {
     [TestMethod]
     public void TestGetOnePlayer() {
         var db = new HandballContext();
-        var controller = new PlayersController(db);
+        var controller = new PlayersController(db, new CustomPermissionService(db, null!));
         var result = controller.GetOnePlayer("foo_bar").Result.Value;
         Assert.IsNotNull(result);
         Assert.AreEqual("Fooseph Barionette", result.Player.Name);
@@ -96,7 +96,7 @@ public class PlayersControllerTest {
     [TestMethod]
     public void TestGetOnePlayerBadName() {
         var db = new HandballContext();
-        var controller = new PlayersController(db);
+        var controller = new PlayersController(db, new CustomPermissionService(db, null!));
         var response = controller.GetOnePlayer("a_name_not_existing").Result.Result;
         var actual = response as NotFoundObjectResult;
         Assert.IsNotNull(actual);
@@ -107,7 +107,7 @@ public class PlayersControllerTest {
     [TestMethod]
     public void TestGetOnePlayerBadTournamentName() {
         var db = new HandballContext();
-        var controller = new PlayersController(db);
+        var controller = new PlayersController(db, new CustomPermissionService(db, null!));
         var response = controller.GetOnePlayer("foo_bar", tournamentSearchable: "fake_tournament").Result.Result;
         var actual = response as NotFoundObjectResult;
         Assert.IsNotNull(actual);

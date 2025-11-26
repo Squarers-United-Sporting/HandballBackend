@@ -11,6 +11,6 @@ public class BackupArgHandler()
             backupTime = args[index++].AsInt();
         }
 
-        PostgresBackup.PeriodicBackups(backupTime);
+        // PostgresBackup.PeriodicBackups(backupTime);
     }
 }

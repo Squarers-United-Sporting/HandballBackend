@@ -7,24 +7,31 @@ using Twilio.Types;
 
 namespace HandballBackend.EndpointHelpers;
 
-public static class TextHelper {
-    private static string UserName() {
+public interface ITextingService {
+    Task<bool> TextPeopleForGame(Game game);
+    Task<bool> TextTournamentStaff(Game game);
+
+    Task<bool> Text(Person target, string msg);
+}
+
+public class TextingService(HandballContext db): ITextingService {
+    private string UserName() {
         return File.ReadAllText(Config.SECRETS_FOLDER + "/TwilioAccount.txt");
     }
 
-    private static string Key() {
+    private string Key() {
         return File.ReadAllText(Config.SECRETS_FOLDER + "/TwilioKey.txt");
     }
 
-    private static bool _hasBeenSetup = false;
+    private bool _hasBeenSetup = false;
 
-    private static void Setup() {
+    private void Setup() {
         if (_hasBeenSetup) return;
         _hasBeenSetup = true;
         TwilioClient.Init(UserName(), Key());
     }
 
-    public static async Task<bool> TextPeopleForGame(Game game) {
+    public async Task<bool> TextPeopleForGame(Game game) {
         var tasks = new List<Task<bool>>();
         tasks.Add(Text(game.Official!.Person,
             $"You are umpiring the game between {game.TeamOne.Name} and {game.TeamTwo.Name} on court {game.Court + 1}. https://squarers.club/games/{game.GameNumber}"
@@ -46,9 +53,8 @@ public static class TextHelper {
         return tasks.All(t => t.Result);
     }
 
-    public static async Task<bool> TextTournamentStaff(Game game) {
+    public async Task<bool> TextTournamentStaff(Game game) {
         var tasks = new List<Task<bool>>();
-        await using var db = new HandballContext();
         var tournamentOfficials =
             await db.TournamentOfficials.Where(to => to.TournamentId == game.TournamentId).IncludeRelevant()
                 .ToListAsync();
@@ -68,7 +74,7 @@ public static class TextHelper {
     }
 
 
-    public static async Task<bool> Text(Person target, string msg) {
+    public async Task<bool> Text(Person target, string msg) {
         Setup();
         var targetPhoneNumber = target.PhoneNumber;
         if (targetPhoneNumber == null) return false;

@@ -6,6 +6,8 @@ using HandballBackend.Database.Models;
 using HandballBackend.EndpointHelpers;
 using HandballBackend.EndpointHelpers.GameManagement;
 using HandballBackend.ErrorTypes;
+using HandballBackend.Events;
+using HandballBackend.FixtureGenerator;
 using HandballBackend.Utils;
 using Microsoft.AspNetCore.Authentication;
 
@@ -26,9 +28,18 @@ builder.Services.AddControllers().AddJsonOptions(options => {
 builder.Services.AddDbContext<HandballContext>();
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddSingleton<IEncryptionService, EncryptionService>();
 builder.Services.AddScoped<IGameManagementService, GameManagementService>();
 builder.Services.AddScoped<ICustomPermissionService, CustomPermissionService>();
+builder.Services.AddScoped<IBackupService, PostgresBackupService>();
+builder.Services.AddScoped<ISocketService, SocketService>();
+builder.Services.AddScoped<ITextingService, TextingService>();
+
+//we need to register it as both a fixture generator and an event handler.
+builder.Services.AddScoped<IFixtureGeneratorService, FixtureGeneratorService>();
+builder.Services.AddScoped<IEventHandler<RoundEndEvent>, FixtureGeneratorService>();
+builder.Services.AddScoped<IEventHandler<GameEndEvent>, EloService>();
+
+builder.Services.AddScoped<IEventPublisher, EventPublisher>();
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpLogging(o => { });
@@ -51,7 +62,6 @@ builder.Services.AddDbContext<HandballContext>();
 ArgsHandler.Parse(args, builder);
 
 var app = builder.Build();
-ServiceLocator.Init(app.Services);
 
 
 // Configure the HTTP request pipeline.

@@ -29,7 +29,6 @@ public class OfficialsController(HandballContext db, ICustomPermissionService pe
         [FromQuery] int limit = -1,
         [FromQuery] int page = -1
     ) {
-        var db = new HandballContext();
         OfficialData[] officialData;
 
         if (!Utilities.TournamentOrElse(db, tournamentSearchable, out var tournament)) {

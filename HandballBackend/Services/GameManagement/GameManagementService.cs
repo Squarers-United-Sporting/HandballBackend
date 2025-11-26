@@ -1,6 +1,8 @@
 using HandballBackend.Controllers;
 using HandballBackend.Database;
 using HandballBackend.Database.Models;
+using HandballBackend.Events;
+using HandballBackend.FixtureGenerator;
 using HandballBackend.Utils;
 using Microsoft.EntityFrameworkCore;
 
@@ -67,7 +69,14 @@ public interface IGameManagementService {
     Task Replay(int gameNumber);
 }
 
-public class GameManagementService(HandballContext db) : IGameManagementService {
+public class GameManagementService(
+    HandballContext db,
+    IBackupService backup,
+    IEventPublisher eventPublisher,
+    ISocketService socketManager,
+    ITextingService textingService,
+    IEloService eloService)
+    : IGameManagementService {
     private static readonly string[] SIDES = ["Left", "Right", "Substitute"];
 
     private static readonly string?[] VALID_SCORE_METHODS = [
@@ -102,13 +111,15 @@ public class GameManagementService(HandballContext db) : IGameManagementService 
     ];
 
 
-    private static void BroadcastEvent(int gameId, GameEvent e) {
-        _ = Task.Run(() => ScoreboardController.SendGameUpdate(gameId, e));
+    private void BroadcastEvent(int gameId, GameEvent e) {
+        _ = Task.Run(() => socketManager.SendGameUpdate(gameId, e));
     }
 
-    private static void BroadcastUpdate(int gameId) {
-        _ = Task.Run(() => ScoreboardController.SendGame(gameId));
+    private void BroadcastUpdate(int gameId) {
+        _ = Task.Run(() => socketManager.SendGame(gameId));
     }
+
+    private static SemaphoreSlim _semaphoreSlim = new(1, 1);
 
     internal static GameEvent SetUpGameEvent(Game game, GameEventType type, bool? firstTeam, int? playerId,
         string? notes = null, int? details = null) {
@@ -772,7 +783,7 @@ public class GameManagementService(HandballContext db) : IGameManagementService 
 
                 var myElo = pgs.TeamId == game.TeamOneId ? teamOneElo : teamTwoElo;
                 var oppElo = pgs.TeamId == game.TeamOneId ? teamTwoElo : teamOneElo;
-                pgs.EloDelta = EloCalculator.CalculateEloDelta(myElo, oppElo, game.WinningTeamId == pgs.TeamId);
+                pgs.EloDelta = EloService.CalculateEloDelta(myElo, oppElo, game.WinningTeamId == pgs.TeamId);
             }
         } else {
             foreach (var pgs in game.Players) {
@@ -782,18 +793,19 @@ public class GameManagementService(HandballContext db) : IGameManagementService 
 
         await db.SaveChangesAsync();
         if (game.Tournament.TextAlerts && markedForReview) {
-            _ = Task.Run(() => TextHelper.TextTournamentStaff(game));
+            _ = Task.Run(() => textingService.TextTournamentStaff(game));
         }
 
         var remainingGames =
             await db.Games.AnyAsync(g =>
                 g.TournamentId == game.TournamentId && !g.IsBye && !g.Ended && g.Id != game.Id);
+        await eventPublisher.Publish(new GameEndEvent(game.Id));
         if (!remainingGames) {
-            await game.Tournament.EndRound();
+            await eventPublisher.Publish(new RoundEndEvent(game.TournamentId));
         }
 
         BroadcastUpdate(gameNumber);
-        await PostgresBackup.MakeBackup();
+        await backup.MakeBackup();
     }
 
     public async Task<Game> CreateGame(int tournamentId, string?[]? playersTeamOne, string?[]? playersTeamTwo,
@@ -855,7 +867,7 @@ public class GameManagementService(HandballContext db) : IGameManagementService 
                         team.ImageUrl = "/api/people/image?name=" + searchableName;
                         team.BigImageUrl = "/api/people/image?name=" + searchableName + "&big=true";
                     } else {
-                        _ = Task.Run(() => ImageHelper.SetGoogleImageForTeam(team.Id));
+                        _ = Task.Run(() => ImageHelper.SetGoogleImageForTeam(db, team.Id));
                     }
 
                     await db.Teams.AddAsync(team);
@@ -928,72 +940,79 @@ public class GameManagementService(HandballContext db) : IGameManagementService 
             teamTwoId = 1;
         }
 
-        var gameNumber =
-            isBye
-                ? -1
-                : ((await db.Games.OrderByDescending(g => g.GameNumber).FirstOrDefaultAsync())?.GameNumber ?? 0) + 1;
-        var game = new Game {
-            GameNumber = gameNumber,
-            TournamentId = tournamentId,
-            TeamOneId = teamOneId,
-            TeamTwoId = teamTwoId,
-            IgaSideId = teamOneId,
-            OfficialId = officialId > 0 ? officialId : null,
-            ScorerId = scorerId > 0 ? scorerId : null,
-            BlitzGame = blitzGame,
-            Court = court,
-            IsFinal = isFinal,
-            Round = round,
-            Ranked = ranked,
-            IsBye = isBye,
-            SomeoneHasWon = isBye
-        };
-        if (isBye) {
-            game.Status = "Bye";
-            game.AdminStatus = "Bye";
-            game.WinningTeamId = 1;
-        }
-
-        await db.AddAsync(game);
-        await db.SaveChangesAsync();
-        game = await db.Games.Where(g => g.Id == game.Id)
-            .IncludeRelevant()
-            .SingleAsync(); //used to pull extra gamey data
-        var playerIds = new[] {
-            teamOne.CaptainId, teamOne.NonCaptainId, teamOne.SubstituteId, teamTwo.CaptainId, teamTwo.NonCaptainId,
-            teamTwo.SubstituteId
-        };
-        var prevGames = await db.PlayerGameStats
-            .Where(pgs => playerIds.Contains(pgs.PlayerId))
-            .GroupBy(pgs => pgs.PlayerId)
-            .Select(g => g.OrderByDescending(x => x.GameId).FirstOrDefault())
-            .ToDictionaryAsync(pgs => pgs!.PlayerId);
-
-        tasks.Clear();
-        foreach (var team in new[] {teamOne, teamTwo}) {
-            if (team.Id == 1) continue;
-            Person?[] teamPlayers = [team.Captain, team.NonCaptain, team.Substitute];
-            foreach (var p in teamPlayers.Where(p => p != null).Cast<Person>()) {
-                prevGames.TryGetValue(p.Id, out var prevGame);
-                var carryCardTimes = game.TournamentId >= 7 && prevGame?.TournamentId == game.TournamentId;
-                tasks.Add(db.AddAsync(new PlayerGameStats {
-                    GameId = game.Id,
-                    PlayerId = p.Id,
-                    TournamentId = tournamentId,
-                    TeamId = team.Id,
-                    OpponentId = team.Id == teamOneId ? teamTwoId : teamOneId,
-                    InitialElo = (prevGame?.InitialElo ?? 1500.0) + (prevGame?.EloDelta ?? 0),
-                    CardTime = carryCardTimes ? Math.Max(prevGame?.CardTime ?? 0, 0) : 0,
-                    CardTimeRemaining = carryCardTimes ? Math.Max(prevGame?.CardTimeRemaining ?? 0, 0) : 0,
-                    EloDelta = isBye ? 0 : null,
-                    IsLibero = false,
-                }).AsTask());
+        await _semaphoreSlim.WaitAsync();
+        try {
+            var gameNumber =
+                isBye
+                    ? -1
+                    : ((await db.Games.OrderByDescending(g => g.GameNumber).FirstOrDefaultAsync())?.GameNumber ?? 0) +
+                      1;
+            var game = new Game {
+                GameNumber = gameNumber,
+                TournamentId = tournamentId,
+                TeamOneId = teamOneId,
+                TeamTwoId = teamTwoId,
+                IgaSideId = teamOneId,
+                OfficialId = officialId > 0 ? officialId : null,
+                ScorerId = scorerId > 0 ? scorerId : null,
+                BlitzGame = blitzGame,
+                Court = court,
+                IsFinal = isFinal,
+                Round = round,
+                Ranked = ranked,
+                IsBye = isBye,
+                SomeoneHasWon = isBye
+            };
+            if (isBye) {
+                game.Status = "Bye";
+                game.AdminStatus = "Bye";
+                game.WinningTeamId = 1;
             }
-        }
 
-        await Task.WhenAll(tasks);
-        await db.SaveChangesAsync();
-        return game;
+            await db.AddAsync(game);
+            await db.SaveChangesAsync();
+
+            game = await db.Games.Where(g => g.Id == game.Id)
+                .IncludeRelevant()
+                .SingleAsync(); //used to pull extra gamey data
+            var playerIds = new[] {
+                teamOne.CaptainId, teamOne.NonCaptainId, teamOne.SubstituteId, teamTwo.CaptainId, teamTwo.NonCaptainId,
+                teamTwo.SubstituteId
+            };
+            var prevGames = await db.PlayerGameStats
+                .Where(pgs => playerIds.Contains(pgs.PlayerId))
+                .GroupBy(pgs => pgs.PlayerId)
+                .Select(g => g.OrderByDescending(x => x.GameId).FirstOrDefault())
+                .ToDictionaryAsync(pgs => pgs!.PlayerId);
+
+            tasks.Clear();
+            foreach (var team in new[] {teamOne, teamTwo}) {
+                if (team.Id == 1) continue;
+                Person?[] teamPlayers = [team.Captain, team.NonCaptain, team.Substitute];
+                foreach (var p in teamPlayers.Where(p => p != null).Cast<Person>()) {
+                    prevGames.TryGetValue(p.Id, out var prevGame);
+                    var carryCardTimes = game.TournamentId >= 7 && prevGame?.TournamentId == game.TournamentId;
+                    tasks.Add(db.AddAsync(new PlayerGameStats {
+                        GameId = game.Id,
+                        PlayerId = p.Id,
+                        TournamentId = tournamentId,
+                        TeamId = team.Id,
+                        OpponentId = team.Id == teamOneId ? teamTwoId : teamOneId,
+                        InitialElo = (prevGame?.InitialElo ?? 1500.0) + (prevGame?.EloDelta ?? 0),
+                        CardTime = carryCardTimes ? Math.Max(prevGame?.CardTime ?? 0, 0) : 0,
+                        CardTimeRemaining = carryCardTimes ? Math.Max(prevGame?.CardTimeRemaining ?? 0, 0) : 0,
+                        EloDelta = isBye ? 0 : null,
+                        IsLibero = false,
+                    }).AsTask());
+                }
+            }
+
+            await Task.WhenAll(tasks);
+            await db.SaveChangesAsync();
+            return game;
+        } finally {
+            _semaphoreSlim.Release();
+        }
     }
 
     public async Task Resolve(int gameNumber) {

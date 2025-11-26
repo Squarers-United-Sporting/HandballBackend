@@ -13,7 +13,7 @@ namespace HandballBackend.Controllers;
 [Authorize(Policy = Policies.IsUmpire)]
 [ApiController]
 [Route("api/games/update")]
-public class EditGamesController(HandballContext db, IGameManagementService gameManager) : ControllerBase {
+public class EditGamesController(HandballContext db, IGameManagementService gameManager, ITextingService textingService) : ControllerBase {
     [HttpPost("create")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -234,7 +234,7 @@ public class EditGamesController(HandballContext db, IGameManagementService game
     [Authorize(Policy = Policies.IsUmpireManager)]
     public IActionResult AlertGame([FromBody] AlertRequest alertRequest) {
         var game = db.Games.IncludeRelevant().First(g => alertRequest.Id == g.GameNumber);
-        _ = TextHelper.TextPeopleForGame(game);
+        _ = textingService.TextPeopleForGame(game);
         return NoContent();
     }
 

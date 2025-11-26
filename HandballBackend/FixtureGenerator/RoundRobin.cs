@@ -10,15 +10,16 @@ public class RoundRobin : AbstractFixtureGenerator {
     private readonly bool _blitz;
 
 
-    public RoundRobin(int tournamentId, bool blitz = false) : base(tournamentId, true, true) {
+    public RoundRobin(int tournamentId, FixtureGeneratorService fixtureGen, bool blitz = false) : base(tournamentId,
+        fixtureGen, true, true) {
         _tournamentId = tournamentId;
         _blitz = blitz;
     }
 
 
     public override async Task<bool> EndOfRound() {
-        var db = ServiceLocator.Get<HandballContext>();
-        var gameManager = ServiceLocator.Get<IGameManagementService>();
+        var db = FixtureGen.Context;
+        var gameManager = FixtureGen.GameManager;
         var tournament = (await db.Tournaments.FindAsync(_tournamentId))!;
 
         var rounds = await db.Games

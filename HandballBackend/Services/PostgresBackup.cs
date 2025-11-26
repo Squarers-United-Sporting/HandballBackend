@@ -1,24 +1,32 @@
+using HandballBackend.Events;
 using Microsoft.EntityFrameworkCore;
 
 namespace HandballBackend.EndpointHelpers;
 
-public static class PostgresBackup {
-    private static Timer? _timer;
-    private static bool Enabled = false;
+public interface IBackupService {
+    Task MakeTimestampedBackup(string backupTitle = "auto", bool force = false);
+    Task MakeBackup(string filename = "latest");
+    void PeriodicBackups(int backupTime);
+}
 
-    public static async Task MakeTimestampedBackup(string backupTitle = "auto", bool force = false) {
+public class PostgresBackupService(HandballContext db) : IBackupService {
+    private Timer? _timer;
+    private bool _enabled = false;
+
+    public async Task MakeTimestampedBackup(string backupTitle = "auto", bool force = false) {
         if (!await HasDatabaseChanged() && !force) {
             Console.WriteLine("Backup not necessary; files are the same");
             return;
         }
+
         Console.WriteLine($"Making Backup '{backupTitle}'");
 
         await MakeBackup($"{DateTime.Now:yyyy-MM-dd HH-mm-ss} {backupTitle}");
         await SaveLengthToFile();
     }
 
-    public static async Task MakeBackup(string filename = "latest") {
-        if (!Enabled || !Config.USING_POSTGRES) return;
+    public async Task MakeBackup(string filename = "latest") {
+        if (!_enabled || !Config.USING_POSTGRES) return;
         var process = new System.Diagnostics.Process();
         var connArgs = ParseConnectionString(HandballContext.ConnectionString);
 
@@ -44,11 +52,10 @@ public static class PostgresBackup {
         }
 
 
-
         await process.WaitForExitAsync();
     }
 
-    private static Dictionary<string, string> ParseConnectionString(string connectionString) {
+    private Dictionary<string, string> ParseConnectionString(string connectionString) {
         var split = connectionString.Split(';');
         var dict = new Dictionary<string, string>();
         foreach (var s in split) {
@@ -62,13 +69,13 @@ public static class PostgresBackup {
         return dict;
     }
 
-    public static void PeriodicBackups(int backupTime) {
-        Enabled = true;
+    public void PeriodicBackups(int backupTime) {
+        _enabled = true;
         _ = Task.Run(() => MakeBackup());
         _timer ??= new Timer(_ => Task.Run(() => MakeBackup()), null, TimeSpan.Zero, TimeSpan.FromHours(backupTime));
     }
 
-    private static async Task<Dictionary<string, long>> LoadLengthFromFile() {
+    private async Task<Dictionary<string, long>> LoadLengthFromFile() {
         await File.AppendAllTextAsync($"{Config.BACKUP_FOLDER}/dbTableLengths.txt", "");
         var lines = await File.ReadAllLinesAsync($"{Config.BACKUP_FOLDER}/dbTableLengths.txt");
         var dict = new Dictionary<string, long>();
@@ -83,7 +90,7 @@ public static class PostgresBackup {
         return dict;
     }
 
-    private static async Task SaveLengthToFile() {
+    private async Task SaveLengthToFile() {
         var lines = new List<string>();
         foreach (var (table, length) in await GetLengthFromDatabase()) {
             lines.Add($"{table}:{length}");
@@ -92,23 +99,24 @@ public static class PostgresBackup {
         await File.WriteAllLinesAsync($"{Config.BACKUP_FOLDER}/dbTableLengths.txt", lines);
     }
 
-    private static async Task<Dictionary<string, long>> GetLengthFromDatabase() {
-        var dict = new Dictionary<string, long>();
-        await using var db = new HandballContext();
-        dict[nameof(db.GameEvents)] = await db.GameEvents.LongCountAsync();
-        dict[nameof(db.Games)] = await db.Games.LongCountAsync();
-        dict[nameof(db.Officials)] = await db.Officials.LongCountAsync();
-        dict[nameof(db.People)] = await db.People.LongCountAsync();
-        dict[nameof(db.PlayerGameStats)] = await db.PlayerGameStats.LongCountAsync();
-        dict[nameof(db.QuotesOfTheDay)] = await db.QuotesOfTheDay.LongCountAsync();
-        dict[nameof(db.Teams)] = await db.Teams.LongCountAsync();
-        dict[nameof(db.TournamentOfficials)] = await db.TournamentOfficials.LongCountAsync();
-        dict[nameof(db.TournamentTeams)] = await db.TournamentTeams.LongCountAsync();
-        dict[nameof(db.Tournaments)] = await db.Tournaments.LongCountAsync();
+    private async Task<Dictionary<string, long>> GetLengthFromDatabase() {
+        var dict = new Dictionary<string, long> {
+            [nameof(db.GameEvents)] = await db.GameEvents.LongCountAsync(),
+            [nameof(db.Games)] = await db.Games.LongCountAsync(),
+            [nameof(db.Officials)] = await db.Officials.LongCountAsync(),
+            [nameof(db.People)] = await db.People.LongCountAsync(),
+            [nameof(db.PlayerGameStats)] = await db.PlayerGameStats.LongCountAsync(),
+            [nameof(db.QuotesOfTheDay)] = await db.QuotesOfTheDay.LongCountAsync(),
+            [nameof(db.Teams)] = await db.Teams.LongCountAsync(),
+            [nameof(db.TournamentOfficials)] = await db.TournamentOfficials.LongCountAsync(),
+            [nameof(db.TournamentTeams)] = await db.TournamentTeams.LongCountAsync(),
+            [nameof(db.Tournaments)] = await db.Tournaments.LongCountAsync(),
+            [nameof(db.Documents)] = await db.Documents.LongCountAsync()
+        };
         return dict;
     }
 
-    private static async Task<bool> HasDatabaseChanged() {
+    private async Task<bool> HasDatabaseChanged() {
         var prevDict = await LoadLengthFromFile();
         var nowDict = await GetLengthFromDatabase();
         foreach (var (table, length) in nowDict) {
