@@ -6,7 +6,7 @@ namespace HandballBackend.EndpointHelpers;
 public interface IBackupService {
     Task MakeTimestampedBackup(string backupTitle = "auto", bool force = false);
     Task MakeBackup(string filename = "latest");
-    void PeriodicBackups(int backupTime);
+    void PeriodicBackups();
 }
 
 public class PostgresBackupService(HandballContext db) : IBackupService {
@@ -69,10 +69,10 @@ public class PostgresBackupService(HandballContext db) : IBackupService {
         return dict;
     }
 
-    public void PeriodicBackups(int backupTime) {
+    public void PeriodicBackups() {
         _enabled = true;
         _ = Task.Run(() => MakeBackup());
-        _timer ??= new Timer(_ => Task.Run(() => MakeBackup()), null, TimeSpan.Zero, TimeSpan.FromHours(backupTime));
+        _timer ??= new Timer(_ => Task.Run(() => MakeBackup()), null, TimeSpan.Zero, TimeSpan.FromHours(Config.BACKUP_TIME));
     }
 
     private async Task<Dictionary<string, long>> LoadLengthFromFile() {
