@@ -14,7 +14,7 @@ public interface ITextingService {
     Task<bool> Text(Person target, string msg);
 }
 
-public class TextingService(HandballContext db): ITextingService {
+public class TwilioTextingService(HandballContext db): ITextingService {
     private string UserName() {
         return File.ReadAllText(Config.SECRETS_FOLDER + "/TwilioAccount.txt");
     }

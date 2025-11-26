@@ -1,6 +1,7 @@
 namespace HandballBackend;
 
 public static class Config {
+    public static int BACKUP_TIME = -1;
     public static bool SAVE_ERRORS = false;
     public static bool CHECKING_GIT = false;
     public static string BACKUP_FOLDER = "./backup";

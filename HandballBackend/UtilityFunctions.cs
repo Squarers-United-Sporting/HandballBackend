@@ -166,7 +166,7 @@ internal static class UtilityFunctions {
         init();
         if (ShouldExit("send a group text")) return;
         var db = new HandballContext();
-        var textingService = new TextingService(db);
+        var textingService = new TwilioTextingService(db);
         var people = db.TournamentTeams.Where(tt => tt.TournamentId == 11).IncludeRelevant().Select(t => t.Team)
             .ToArray()
             .SelectMany(t => t.People).ToList();

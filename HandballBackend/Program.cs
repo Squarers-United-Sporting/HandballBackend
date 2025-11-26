@@ -32,7 +32,7 @@ builder.Services.AddScoped<IGameManagementService, GameManagementService>();
 builder.Services.AddScoped<ICustomPermissionService, CustomPermissionService>();
 builder.Services.AddScoped<IBackupService, PostgresBackupService>();
 builder.Services.AddScoped<ISocketService, SocketService>();
-builder.Services.AddScoped<ITextingService, TextingService>();
+builder.Services.AddScoped<ITextingService, TwilioTextingService>();
 
 //we need to register it as both a fixture generator and an event handler.
 builder.Services.AddScoped<IFixtureGeneratorService, FixtureGeneratorService>();
@@ -70,6 +70,10 @@ using (var serviceScope = app.Services.CreateScope())
 
     var db = services.GetRequiredService<HandballContext>();
     new EloService(db).UpdatePlayerElos();
+    if (Config.BACKUP_TIME > 0) {
+        var postgres = services.GetRequiredService<IBackupService>();
+        postgres.PeriodicBackups();
+    }
 }
 
 // Configure the HTTP request pipeline.
