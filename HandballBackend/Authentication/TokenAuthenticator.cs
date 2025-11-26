@@ -42,9 +42,9 @@ public class TokenAuthenticator : AuthenticationHandler<AuthenticationSchemeOpti
             myPermission = person.PermissionLevel;
         } else if (tournamentLocation.IsGame) {
             int? gameId = null;
-            if (Request.Query["id"].FirstOrDefault() is { } stringId) {
+            if (Request.Query[tournamentLocation.ParameterName].FirstOrDefault() is { } stringId) {
                 gameId = int.Parse(stringId);
-            } else if (Request.RouteValues.TryGetValue("gameNumber", out var rawId) && rawId is int id) {
+            } else if (Request.RouteValues.TryGetValue(tournamentLocation.ParameterName, out var rawId) && rawId is int id) {
                 gameId = id;
             } else {
                 // only check the id if the request is smaller than 5kb (so we don't decode entire images)
