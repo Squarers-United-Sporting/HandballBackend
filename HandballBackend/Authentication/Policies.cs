@@ -14,16 +14,16 @@ public static class Policies {
         options.AddPolicy(IsAdmin, policy => policy
             .RequireAssertion(c =>
                 c.User.HasClaim(c =>
-                    c is {Type: ClaimTypes.Role, Value: nameof(PermissionType.Admin)})));
+                    c is { Type: ClaimTypes.Role, Value: nameof(PermissionType.Admin) })));
 
         options.AddPolicy(IsUmpireManager, policy => policy
             .RequireAssertion(c =>
                 c.User.HasClaim(c =>
-                    c is {Type: ClaimTypes.Role, Value: nameof(PermissionType.UmpireManager)})));
+                    c is { Type: ClaimTypes.Role, Value: nameof(PermissionType.UmpireManager) })));
 
         options.AddPolicy(IsTournamentDirector, policy => policy
             .RequireAssertion(c =>
                 c.User.HasClaim(c =>
-                    c is {Type: ClaimTypes.Role, Value: nameof(PermissionType.TournamentDirector)})));
+                    c is { Type: ClaimTypes.Role, Value: nameof(PermissionType.TournamentDirector) })));
     }
 }

@@ -55,8 +55,8 @@ public class EloService(HandballContext db) : IEventHandler<UpdateElosEvent> {
                         PlayerId = g.Key,
                         GameId = g.Max(x => x.GameId)
                     }),
-                pgs => new {pgs.PlayerId, pgs.GameId},
-                latest => new {latest.PlayerId, latest.GameId},
+                pgs => new { pgs.PlayerId, pgs.GameId },
+                latest => new { latest.PlayerId, latest.GameId },
                 (pgs, latest) => new {
                     pgs.PlayerId,
                     Elo = (pgs.EloDelta ?? 0) + pgs.InitialElo

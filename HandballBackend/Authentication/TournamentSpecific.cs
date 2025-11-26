@@ -1,4 +1,4 @@
-﻿namespace HandballBackend.Authentication;
+namespace HandballBackend.Authentication;
 
 [AttributeUsage(AttributeTargets.Method)]
 public class TournamentSpecificAttribute : Attribute {

@@ -1,4 +1,4 @@
-﻿namespace HandballBackend.Events;
+namespace HandballBackend.Events;
 
 public interface IEventPublisher {
     Task Publish<TEvent>(TEvent evt) where TEvent : Event;

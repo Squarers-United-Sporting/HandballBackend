@@ -1,4 +1,4 @@
-﻿using HandballBackend.Database.Models;
+using HandballBackend.Database.Models;
 using HandballBackend.EndpointHelpers;
 using HandballBackend.EndpointHelpers.GameManagement;
 using HandballBackend.Events;

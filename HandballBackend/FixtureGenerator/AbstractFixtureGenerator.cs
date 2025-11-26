@@ -183,7 +183,7 @@ public abstract class AbstractFixtureGenerator(
             TrySolution(solutionArray, officials, 0, true, false, true, requiresScorer: true);
         }
 
-        foreach (var soln in solution.SelectMany(i => new[] {i.Item1, i.Item2}).Where(i => i != null)
+        foreach (var soln in solution.SelectMany(i => new[] { i.Item1, i.Item2 }).Where(i => i != null)
                      .Cast<UmpiringSolution>()) {
             var game = games.First(g => g.Id == soln.GameId);
             if (soln.Official!.OfficialId > 0) {

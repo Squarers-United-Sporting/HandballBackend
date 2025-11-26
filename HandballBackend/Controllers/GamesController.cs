@@ -20,7 +20,7 @@ public class GamesController(HandballContext db, ICustomPermissionService permis
     }
 
     [HttpGet("change_code")]
-    [TournamentSpecific("id", isGame:true)]
+    [TournamentSpecific("id", isGame: true)]
     public ActionResult<ChangeCodeResponse> GetChangeCode(
         [FromQuery(Name = "id")] int gameNumber
     ) {
@@ -36,7 +36,7 @@ public class GamesController(HandballContext db, ICustomPermissionService permis
         public required GameData Game { get; set; }
     }
 
-    [TournamentSpecific("gameNumber", isGame:true)]
+    [TournamentSpecific("gameNumber", isGame: true)]
     [HttpGet("{gameNumber:int}")]
     public ActionResult<GetGameResponse> GetOneGame(
         int gameNumber,

@@ -11,7 +11,7 @@ public class Pooled : AbstractFixtureGenerator {
     private readonly bool _blitz;
 
 
-    public Pooled(int tournamentId, FixtureGeneratorService fixtureGen, bool blitz = false) : base(tournamentId, fixtureGen,true, true) {
+    public Pooled(int tournamentId, FixtureGeneratorService fixtureGen, bool blitz = false) : base(tournamentId, fixtureGen, true, true) {
         _tournamentId = tournamentId;
         _blitz = blitz;
     }
