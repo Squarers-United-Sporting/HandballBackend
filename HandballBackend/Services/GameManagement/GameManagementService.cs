@@ -74,8 +74,7 @@ public class GameManagementService(
     IBackupService backup,
     IEventPublisher eventPublisher,
     ISocketService socketManager,
-    ITextingService textingService,
-    IEloService eloService)
+    ITextingService textingService)
     : IGameManagementService {
     private static readonly string[] SIDES = ["Left", "Right", "Substitute"];
 
@@ -706,6 +705,7 @@ public class GameManagementService(
         await db.PlayerGameStats.Where(pgs => pgs.GameId == game.Id).ExecuteDeleteAsync();
         db.Remove(game);
         await db.SaveChangesAsync();
+        await eventPublisher.Publish(new UpdateElosEvent());
         BroadcastUpdate(gameNumber);
     }
 

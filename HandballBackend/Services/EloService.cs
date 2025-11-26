@@ -23,10 +23,7 @@ namespace HandballBackend.Utils;
  *
  */
 
-public interface IEloService {
-}
-
-public class EloService(HandballContext db): IEventHandler<GameEndEvent> {
+public class EloService(HandballContext db) : IEventHandler<UpdateElosEvent> {
     private static double K = 40.0;
     private static double D = 3000.0;
 
@@ -68,7 +65,7 @@ public class EloService(HandballContext db): IEventHandler<GameEndEvent> {
             .ToDictionary(x => x.PlayerId, x => x.Elo);
     }
 
-    public Task Handle(GameEndEvent @event) {
+    public Task Handle(UpdateElosEvent @event) {
         UpdatePlayerElos();
         return Task.CompletedTask;
     }

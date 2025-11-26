@@ -4,6 +4,6 @@ public abstract record Event;
 
 public record GameEndEvent(int GameId): Event;
 
-public record RoundEndEvent(int TournamentId): Event;
+public record UpdateElosEvent: Event;
 
-public record TestEvent: Event;
+public record RoundEndEvent(int TournamentId): Event;

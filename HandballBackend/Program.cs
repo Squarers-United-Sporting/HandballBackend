@@ -37,7 +37,8 @@ builder.Services.AddScoped<ITextingService, TextingService>();
 //we need to register it as both a fixture generator and an event handler.
 builder.Services.AddScoped<IFixtureGeneratorService, FixtureGeneratorService>();
 builder.Services.AddScoped<IEventHandler<RoundEndEvent>, FixtureGeneratorService>();
-builder.Services.AddScoped<IEventHandler<GameEndEvent>, EloService>();
+builder.Services.AddScoped<IEventHandler<GameEndEvent>, EventManager>();
+builder.Services.AddScoped<IEventHandler<UpdateElosEvent>, EloService>();
 
 builder.Services.AddScoped<IEventPublisher, EventPublisher>();
 
@@ -63,6 +64,13 @@ ArgsHandler.Parse(args, builder);
 
 var app = builder.Build();
 
+using (var serviceScope = app.Services.CreateScope())
+{
+    var services = serviceScope.ServiceProvider;
+
+    var db = services.GetRequiredService<HandballContext>();
+    new EloService(db).UpdatePlayerElos();
+}
 
 // Configure the HTTP request pipeline.
 if (Config.LOGGING) {
