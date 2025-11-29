@@ -105,7 +105,6 @@ internal static class UtilityFunctions {
     }
 
 
-
     public static void ForceForfeitTournament() {
         init();
         Console.WriteLine("Enter the Lowest game Number");
@@ -167,14 +166,14 @@ internal static class UtilityFunctions {
         if (ShouldExit("send a group text")) return;
         var db = new HandballContext();
         var textingService = new TwilioTextingService(db);
-        var people = db.TournamentTeams.Where(tt => tt.TournamentId == 11).IncludeRelevant().Select(t => t.Team)
+        var people = db.TournamentTeams.Where(tt => tt.TournamentId == 12).IncludeRelevant().Select(t => t.Team)
             .ToArray()
             .SelectMany(t => t.People).ToList();
         var tasks = new List<Task>();
         foreach (var p in people) {
             Console.WriteLine($"Texting {p.Name}");
             tasks.Add(textingService.Text(p,
-                $"Hi {p.Name.Split(" ")[0]}!\n  Just a reminder that the 10th SUSS Championship is on at 5pm today at Manning Library (2 Conochie Cres). Don't forget to bring a jumper as it is set to get quite cold!\n\nThanks, and as always, Happy Balling!")
+                $"Hi {p.Name.Split(" ")[0]}!\n  Just a reminder that the 11th SUSS Championship is on Tonight at 5pm at Manning Library (2 Conochie Cres). Don't forget to some sunscreen as it is set to get quite warm!\n\nThanks, and as always, Happy Balling!")
             );
         }
 
@@ -206,27 +205,28 @@ internal static class UtilityFunctions {
         Task.WaitAll(tasks.ToArray());
     }
 
-    public static void ResynchroniseEveryGame() {
-        init();
-        var db = new HandballContext();
-        var prevGame = -1;
-        foreach (var g in db.Games.IncludeRelevant().ToArray()) {
-            if (g.GameNumber < 0) continue;
-            if (g.GameNumber >= prevGame) {
-                Console.WriteLine($"Game {g.GameNumber}");
-                prevGame = g.GameNumber - g.GameNumber % 50 + 50;
-            }
-
-            try {
-                GameEventSynchroniser.SyncGame(db, g.GameNumber);
-            } catch (Exception e) {
-                Console.WriteLine($"Game {g.GameNumber}: {e.Message}");
-                throw;
-            }
-        }
-
-        db.SaveChanges();
-    }
+    // public static void ResynchroniseEveryGame() {
+    //     init();
+    //     var db = new HandballContext();
+    //     var gameEventSynchroniser = new GameEventSynchroniser(db);
+    //     var prevGame = -1;
+    //     foreach (var g in db.Games.IncludeRelevant().ToArray()) {
+    //         if (g.GameNumber < 0) continue;
+    //         if (g.GameNumber >= prevGame) {
+    //             Console.WriteLine($"Game {g.GameNumber}");
+    //             prevGame = g.GameNumber - g.GameNumber % 50 + 50;
+    //         }
+    //
+    //         try {
+    //             gameEventSynchroniser.SyncGame(g.GameNumber);
+    //         } catch (Exception e) {
+    //             Console.WriteLine($"Game {g.GameNumber}: {e.Message}");
+    //             throw;
+    //         }
+    //     }
+    //
+    //     db.SaveChanges();
+    // }
 
 
     public static void VotesFixerer() {
@@ -283,7 +283,7 @@ internal static class UtilityFunctions {
 
     public static void TestUmpireAssignments() {
         init();
-        const int tournamentId = 11;
+        const int tournamentId = 12;
         const int round = 1;
         List<Game> courtOneGames;
         List<Game?> courtTwoGames;

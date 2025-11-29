@@ -33,6 +33,7 @@ builder.Services.AddScoped<ICustomPermissionService, CustomPermissionService>();
 builder.Services.AddScoped<IBackupService, PostgresBackupService>();
 builder.Services.AddScoped<ISocketService, SocketService>();
 builder.Services.AddScoped<ITextingService, TwilioTextingService>();
+builder.Services.AddScoped<IGameEventSynchroniser, GameEventSynchroniser>();
 
 //we need to register it as both a fixture generator and an event handler.
 builder.Services.AddScoped<IFixtureGeneratorService, FixtureGeneratorService>();
