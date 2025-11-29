@@ -19,8 +19,7 @@ public interface ISocketService {
     Task ManageReceive(WebSocket socket, int gameId);
 }
 
-public class SocketService(IOptions<JsonOptions> jsonOptions, HandballContext db) : ISocketService {
-
+public class SocketService(IOptions<JsonOptions> jsonOptions, IServiceProvider provider) : ISocketService {
     public static readonly Dictionary<int, List<WebSocket>> Sockets = new();
 
     public void AddSocket(int gameId, WebSocket socket) {
@@ -63,6 +62,8 @@ public class SocketService(IOptions<JsonOptions> jsonOptions, HandballContext db
     }
 
     private async Task SocketSendUpdate(WebSocket socket, int gameId) {
+        using var scope = provider.CreateScope();
+        var db = scope.ServiceProvider.GetService<HandballContext>();
         var game = db.Games
             .IncludeRelevant()
             .Include(g => g.Events)
@@ -83,5 +84,4 @@ public class SocketService(IOptions<JsonOptions> jsonOptions, HandballContext db
         var tasks = sockets.Select(ws => SocketSendEvent(ws, e)).ToList();
         await Task.WhenAll(tasks);
     }
-
 }
