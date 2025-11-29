@@ -20,7 +20,7 @@ public interface IGameEventSynchroniser {
     void SyncAbandon(Game game, GameEvent gameEvent);
 }
 
-public class GameEventSynchroniser(IServiceProvider provider): IGameEventSynchroniser {
+public class GameEventSynchroniser(IServiceProvider provider) : IGameEventSynchroniser {
     public void SyncGame(int gameNumber) {
         using var scope = provider.CreateScope();
         var db = scope.ServiceProvider.GetService<HandballContext>()!;
