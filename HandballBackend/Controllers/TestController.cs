@@ -88,4 +88,9 @@ public class TestController(IBackupService backup, IEventPublisher eventPublishe
         await ExceptionLoggingHelper.Clear();
         return Ok();
     }
+
+    [HttpGet("config")]
+    public object GetConfig() {
+        return Config.ToInstance();
+    }
 }
