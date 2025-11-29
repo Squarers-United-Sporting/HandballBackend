@@ -4,8 +4,26 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HandballBackend.EndpointHelpers.GameManagement;
 
-internal static class GameEventSynchroniser {
-    public static void SyncGame(HandballContext db, int gameNumber) {
+public interface IGameEventSynchroniser {
+    void SyncGame(int gameNumber);
+    void SyncResolve(Game game, GameEvent gameEvent);
+    void SyncGameEnd(Game game, GameEvent gameEvent);
+    void SyncMerit(Game game, GameEvent gameEvent);
+    void SyncDemerit(Game game, GameEvent gameEvent);
+    void SyncCard(Game game, GameEvent gameEvent);
+    void SyncFault(Game game, GameEvent gameEvent);
+    void SyncScorePoint(Game game, GameEvent gameEvent);
+    void SyncStartGame(Game game, GameEvent gameEvent);
+    void SyncTimeout(Game game, GameEvent gameEvent);
+    void SyncForfeit(Game game, GameEvent gameEvent);
+    void SyncVotes(Game game, GameEvent gameEvent);
+    void SyncAbandon(Game game, GameEvent gameEvent);
+}
+
+public class GameEventSynchroniser(IServiceProvider provider): IGameEventSynchroniser {
+    public void SyncGame(int gameNumber) {
+        using var scope = provider.CreateScope();
+        var db = scope.ServiceProvider.GetService<HandballContext>()!;
         var game = db.Games.IncludeRelevant().Include(g => g.Events).SingleOrDefault(g => g.GameNumber == gameNumber);
         if (game is null) throw new InvalidOperationException($"Game {gameNumber} not found");
         game.Reset();
@@ -91,14 +109,15 @@ internal static class GameEventSynchroniser {
                 }
             }
         }
+        db.SaveChanges();
     }
 
-    public static void SyncResolve(Game game, GameEvent gameEvent) {
+    public void SyncResolve(Game game, GameEvent gameEvent) {
         game.Resolved = true;
         game.AdminStatus = "Resolved";
     }
 
-    public static void SyncGameEnd(Game game, GameEvent gameEvent) {
+    public void SyncGameEnd(Game game, GameEvent gameEvent) {
         var isForfeit = game.Events.Any(gE => gE.EventType == GameEventType.Forfeit);
         var badBehaviour = game.Events.Where(ge => ge.EventType == GameEventType.Notes).Any(gE => gE.Details == 1);
         var protested = game.Events.Any(gE => gE.EventType == GameEventType.Protest);
@@ -137,17 +156,17 @@ internal static class GameEventSynchroniser {
         game.Notes = gameEvent.Notes;
     }
 
-    public static void SyncMerit(Game game, GameEvent gameEvent) {
+    public void SyncMerit(Game game, GameEvent gameEvent) {
         var player = game.Players.FirstOrDefault(p => p.PlayerId == gameEvent.PlayerId)!;
         player.Merits++;
     }
 
-    public static void SyncDemerit(Game game, GameEvent gameEvent) {
+    public void SyncDemerit(Game game, GameEvent gameEvent) {
         var player = game.Players.FirstOrDefault(p => p.PlayerId == gameEvent.PlayerId)!;
         player.Demerits++;
     }
 
-    public static void SyncCard(Game game, GameEvent gameEvent) {
+    public void SyncCard(Game game, GameEvent gameEvent) {
         var player = game.Players.FirstOrDefault(p => p.PlayerId == gameEvent.PlayerId)!;
         switch (gameEvent.EventType) {
             case GameEventType.Warning:
@@ -181,7 +200,7 @@ internal static class GameEventSynchroniser {
     }
 
 
-    public static void SyncFault(Game game, GameEvent gameEvent) {
+    public void SyncFault(Game game, GameEvent gameEvent) {
         var player = game.Players.FirstOrDefault(pgs => pgs.PlayerId == gameEvent.PlayerId);
         var faulted = game.Events.OrderByDescending(gE => gE.EventType is GameEventType.Fault or GameEventType.Score)
             .Select(gE => gE.EventType is GameEventType.Fault).FirstOrDefault(false);
@@ -192,7 +211,7 @@ internal static class GameEventSynchroniser {
         }
     }
 
-    public static void SyncScorePoint(Game game, GameEvent gameEvent) {
+    public void SyncScorePoint(Game game, GameEvent gameEvent) {
         var player = game.Players.FirstOrDefault(pgs => pgs.PlayerId == gameEvent.PlayerId);
         var playersOnCourt = game.Players.Where(p =>
             p.PlayerId == gameEvent.TeamOneLeftId ||
@@ -245,7 +264,8 @@ internal static class GameEventSynchroniser {
         player.PointsScored += 1;
         if (gameEvent.TeamWhoServedId is not null) {
             var playerWhoServed = playersOnCourt.Where(pgs => pgs.TeamId == gameEvent.TeamWhoServedId)
-                .OrderByDescending(pgs => pgs.CardTimeRemaining == 0).ThenByDescending(pgs => pgs.SideOfCourt == gameEvent.SideServed).FirstOrDefault();
+                .OrderByDescending(pgs => pgs.CardTimeRemaining == 0)
+                .ThenByDescending(pgs => pgs.SideOfCourt == gameEvent.SideServed).FirstOrDefault();
             playerWhoServed.ServedPoints += 1;
             if (playerWhoServed.TeamId == gameEvent.TeamId) {
                 playerWhoServed.ServedPointsWon += 1;
@@ -288,7 +308,7 @@ internal static class GameEventSynchroniser {
     }
 
 
-    public static void SyncStartGame(Game game, GameEvent gameEvent) {
+    public void SyncStartGame(Game game, GameEvent gameEvent) {
         game.Started = true;
         foreach (var pgs in game.Players) {
             if (pgs.PlayerId == gameEvent.TeamOneLeftId || pgs.PlayerId == gameEvent.TeamTwoLeftId) {
@@ -302,7 +322,7 @@ internal static class GameEventSynchroniser {
         }
     }
 
-    public static void SyncTimeout(Game game, GameEvent gameEvent) {
+    public void SyncTimeout(Game game, GameEvent gameEvent) {
         if (gameEvent.TeamId == game.TeamOneId) {
             game.TeamOneTimeouts += 1;
         } else {
@@ -310,7 +330,7 @@ internal static class GameEventSynchroniser {
         }
     }
 
-    public static void SyncForfeit(Game game, GameEvent gameEvent) {
+    public void SyncForfeit(Game game, GameEvent gameEvent) {
         if (gameEvent.TeamId == game.TeamOneId) {
             game.TeamTwoScore = Math.Min(Math.Max(game.TeamOneScore + 2, game.ScoreToWin), game.ScoreToForceWin);
         } else {
@@ -320,13 +340,13 @@ internal static class GameEventSynchroniser {
         game.SomeoneHasWon = true;
     }
 
-    public static void SyncVotes(Game game, GameEvent gameEvent) {
+    public void SyncVotes(Game game, GameEvent gameEvent) {
         var player = game.Players.FirstOrDefault(p => p.PlayerId == gameEvent.PlayerId);
         if (player is null) return;
         player.BestPlayerVotes = gameEvent.Details!.Value;
     }
 
-    public static void SyncAbandon(Game game, GameEvent gameEvent) {
+    public void SyncAbandon(Game game, GameEvent gameEvent) {
         game.SomeoneHasWon = true;
     }
 }

@@ -74,7 +74,8 @@ public class GameManagementService(
     IBackupService backup,
     IEventPublisher eventPublisher,
     ISocketService socketManager,
-    ITextingService textingService)
+    ITextingService textingService,
+    IGameEventSynchroniser gameEventSynchroniser)
     : IGameManagementService {
     private static readonly string[] SIDES = ["Left", "Right", "Substitute"];
 
@@ -171,7 +172,7 @@ public class GameManagementService(
         };
     }
 
-    private static async Task<GameEvent> AddPointToGame(HandballContext db, int gameNumber, bool firstTeam,
+    private async Task<GameEvent> AddPointToGame(HandballContext db, int gameNumber, bool firstTeam,
         int? playerId,
         string? notes = null, (int, int)? location = null) {
         var game = await db.Games.IncludeRelevant().Include(g => g.Events)
@@ -237,7 +238,7 @@ public class GameManagementService(
 
 
         await db.AddAsync(newEvent);
-        GameEventSynchroniser.SyncScorePoint(game, newEvent);
+        gameEventSynchroniser.SyncScorePoint(game, newEvent);
         await db.SaveChangesAsync();
         return newEvent;
     }
@@ -328,7 +329,7 @@ public class GameManagementService(
             TeamTwoRightId = teamTwoPlayerObjects[1].PlayerId,
         };
         db.GameEvents.Add(startEvent);
-        GameEventSynchroniser.SyncStartGame(game, startEvent);
+        gameEventSynchroniser.SyncStartGame(game, startEvent);
         await db.SaveChangesAsync();
         BroadcastUpdate(gameNumber);
     }
@@ -348,7 +349,7 @@ public class GameManagementService(
 
         var e = SetUpGameEvent(game, GameEventType.Merit, firstTeam, player, notes: meritReason);
         await db.AddAsync(e);
-        GameEventSynchroniser.SyncMerit(game, e);
+        gameEventSynchroniser.SyncMerit(game, e);
         await db.SaveChangesAsync();
         BroadcastEvent(gameNumber, e);
     }
@@ -363,7 +364,7 @@ public class GameManagementService(
 
         var e = SetUpGameEvent(game, GameEventType.Merit, firstTeam, player.PlayerId, notes: meritReason);
         await db.AddAsync(e);
-        GameEventSynchroniser.SyncMerit(game, e);
+        gameEventSynchroniser.SyncMerit(game, e);
         await db.SaveChangesAsync();
         BroadcastEvent(gameNumber, e);
     }
@@ -383,7 +384,7 @@ public class GameManagementService(
 
         var e = SetUpGameEvent(game, GameEventType.Demerit, firstTeam, player, notes: reason);
         await db.AddAsync(e);
-        GameEventSynchroniser.SyncMerit(game, e);
+        gameEventSynchroniser.SyncMerit(game, e);
         await db.SaveChangesAsync();
         BroadcastEvent(gameNumber, e);
     }
@@ -398,7 +399,7 @@ public class GameManagementService(
 
         var e = SetUpGameEvent(game, GameEventType.Demerit, firstTeam, player.PlayerId, notes: reason);
         await db.AddAsync(e);
-        GameEventSynchroniser.SyncDemerit(game, e);
+        gameEventSynchroniser.SyncDemerit(game, e);
         await db.SaveChangesAsync();
         BroadcastEvent(gameNumber, e);
     }
@@ -478,7 +479,7 @@ public class GameManagementService(
             await AddPointToGame(db, gameNumber, !firstTeam, null, "Double Fault");
         }
 
-        GameEventSynchroniser.SyncFault(game, gameEvent);
+        gameEventSynchroniser.SyncFault(game, gameEvent);
         await db.SaveChangesAsync();
         BroadcastEvent(gameNumber, gameEvent);
     }
@@ -490,7 +491,7 @@ public class GameManagementService(
         if (game.Ended) throw new InvalidOperationException("The game has ended");
         var gameEvent = SetUpGameEvent(game, GameEventType.Timeout, firstTeam, null);
         await db.AddAsync(gameEvent);
-        GameEventSynchroniser.SyncTimeout(game, gameEvent);
+        gameEventSynchroniser.SyncTimeout(game, gameEvent);
         await db.SaveChangesAsync();
         BroadcastEvent(gameNumber, gameEvent);
     }
@@ -502,7 +503,7 @@ public class GameManagementService(
         if (game.Ended) throw new InvalidOperationException("The game has ended");
         var gameEvent = SetUpGameEvent(game, GameEventType.Forfeit, firstTeam, null);
         await db.AddAsync(gameEvent);
-        GameEventSynchroniser.SyncForfeit(game, gameEvent);
+        gameEventSynchroniser.SyncForfeit(game, gameEvent);
         await db.SaveChangesAsync();
         BroadcastEvent(gameNumber, gameEvent);
     }
@@ -546,7 +547,7 @@ public class GameManagementService(
         }
 
         await db.AddAsync(gameEvent);
-        // GameEventSynchroniser.SyncSubstitute(game, gameEvent);  //Doesn't exist
+        // gameEventSynchroniser.SyncSubstitute(game, gameEvent);  //Doesn't exist
         await db.SaveChangesAsync();
         BroadcastEvent(gameNumber, gameEvent);
     }
@@ -586,7 +587,7 @@ public class GameManagementService(
         }
 
         await db.AddAsync(gameEvent);
-        // GameEventSynchroniser.SyncSubstitute(game, gameEvent);  //Doesn't exist
+        // gameEventSynchroniser.SyncSubstitute(game, gameEvent);  //Doesn't exist
         await db.SaveChangesAsync();
         BroadcastEvent(gameNumber, gameEvent);
     }
@@ -643,7 +644,7 @@ public class GameManagementService(
 
         var gameEvent = SetUpGameEvent(game, type, firstTeam, playerId, reason, duration);
         await db.AddAsync(gameEvent);
-        GameEventSynchroniser.SyncCard(game, gameEvent);
+        gameEventSynchroniser.SyncCard(game, gameEvent);
 
 
         var teamId = firstTeam ? game.TeamOneId : game.TeamTwoId;
@@ -684,14 +685,12 @@ public class GameManagementService(
         if (!game.Started) throw new InvalidOperationException("The game has not started");
         if (game.Ended) throw new InvalidOperationException("The game has ended");
         var smallestId = game.Events.Where(gE =>
-                !IGNORED_BY_UNDO.Contains(gE.EventType) && gE is not { EventType: GameEventType.Score, PlayerId: null })
+                !IGNORED_BY_UNDO.Contains(gE.EventType) && gE is not {EventType: GameEventType.Score, PlayerId: null})
             .OrderByDescending(gE => gE.Id).First().Id;
         await db.GameEvents.Where(gE => gE.GameId == game.Id && gE.Id >= smallestId).ExecuteDeleteAsync();
         await db.SaveChangesAsync(); // Not necessary but probably still a good idea
 
-
-        GameEventSynchroniser.SyncGame(db, gameNumber);
-        await db.SaveChangesAsync();
+        gameEventSynchroniser.SyncGame(gameNumber);
         BroadcastUpdate(gameNumber);
     }
 
@@ -748,7 +747,7 @@ public class GameManagementService(
             if (votes <= 0) continue;
             var votesEvent = SetUpGameEvent(game, GameEventType.Votes, true, pgs.PlayerId, details: votes--);
             task.Add(db.AddAsync(votesEvent).AsTask());
-            GameEventSynchroniser.SyncVotes(game, votesEvent);
+            gameEventSynchroniser.SyncVotes(game, votesEvent);
         }
 
         await Task.WhenAll(task);
@@ -759,15 +758,15 @@ public class GameManagementService(
 
         game.MarkedForReview = markedForReview;
         game.Length = Utilities.GetUnixSeconds() - game.StartTime;
-        GameEventSynchroniser.SyncGameEnd(game, endEvent);
+        gameEventSynchroniser.SyncGameEnd(game, endEvent);
         if (!isRandomAbandonment && game is {
-            Ranked:
+                Ranked:
                 true,
-            IsFinal:
+                IsFinal:
                 false,
-            TeamOne.NonCaptainId: not null,
-            TeamTwo.NonCaptain: not null
-        }) {
+                TeamOne.NonCaptainId: not null,
+                TeamTwo.NonCaptain: not null
+            }) {
             var playingPlayers = game.Players
                 .Where(pgs => (isForfeit || pgs.RoundsCarded + pgs.RoundsOnCourt > 0)).ToList();
             var playingPlayerIds = playingPlayers.Select(pgs => pgs.PlayerId).ToList();
@@ -897,7 +896,7 @@ public class GameManagementService(
         var ranked = tournament.Ranked;
         var isBye = false;
         var tasks = new List<Task>();
-        foreach (var team in new[] { teamOne, teamTwo }) {
+        foreach (var team in new[] {teamOne, teamTwo}) {
             if (team.Id == 1) {
                 // this is the bye team
                 isBye = true;
@@ -986,7 +985,7 @@ public class GameManagementService(
                 .ToDictionaryAsync(pgs => pgs!.PlayerId);
 
             tasks.Clear();
-            foreach (var team in new[] { teamOne, teamTwo }) {
+            foreach (var team in new[] {teamOne, teamTwo}) {
                 if (team.Id == 1) continue;
                 Person?[] teamPlayers = [team.Captain, team.NonCaptain, team.Substitute];
                 foreach (var p in teamPlayers.Where(p => p != null).Cast<Person>()) {
@@ -1023,7 +1022,7 @@ public class GameManagementService(
             throw new InvalidOperationException("The game is resolved");
         var gameEvent = SetUpGameEvent(game, GameEventType.Resolve, null, null);
         await db.AddAsync(gameEvent);
-        GameEventSynchroniser.SyncResolve(game, gameEvent);
+        gameEventSynchroniser.SyncResolve(game, gameEvent);
         await db.SaveChangesAsync();
         BroadcastUpdate(gameNumber);
     }
@@ -1035,7 +1034,7 @@ public class GameManagementService(
         if (game.Ended) throw new InvalidOperationException("The game has ended");
         var gameEvent = SetUpGameEvent(game, GameEventType.Abandon, null, null);
         await db.AddAsync(gameEvent);
-        GameEventSynchroniser.SyncAbandon(game, gameEvent);
+        gameEventSynchroniser.SyncAbandon(game, gameEvent);
         await db.SaveChangesAsync();
         BroadcastEvent(gameNumber, gameEvent);
     }
