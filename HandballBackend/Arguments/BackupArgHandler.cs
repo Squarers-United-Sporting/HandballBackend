@@ -8,9 +8,9 @@ public class BackupArgHandler()
     protected override void ParseIfMatched(string[] args, ref int index, WebApplicationBuilder builder) {
         var backupTime = 24 * 7;
         if (index < args.Length && args[index].IsInt()) {
-            Config.BACKUP_TIME = args[index++].AsInt();
+            backupTime = args[index++].AsInt();
         }
-
+        Config.BACKUP_TIME = backupTime;
         // PostgresBackup.PeriodicBackups(backupTime);
     }
 }
