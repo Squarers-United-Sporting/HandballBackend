@@ -91,7 +91,6 @@ public class GamesController(HandballContext db, ICustomPermissionService permis
         [FromQuery] int limit = -1,
         [FromQuery] int page = -1
     ) {
-
         if (!Utilities.TournamentOrElse(db, tournamentSearchable, out var tournament)) {
             return NotFound(new InvalidTournament(tournamentSearchable));
         }
@@ -376,6 +375,30 @@ public class GamesController(HandballContext db, ICustomPermissionService permis
 
 
         return output;
+    }
+
+    [TournamentSpecific("id", isGame: true)]
+    [HttpGet("next")]
+    public async Task<ActionResult<GetNextGameResponse>> GetNextGame([FromQuery] int id) {
+        var game = await db.Games.FirstOrDefaultAsync(g => g.GameNumber == id);
+        if (game is null) {
+            return NotFound(new DoesNotExist("Game", id.ToString()));
+        }
+
+        var nextGame = db.Games
+            .FirstOrDefault(g => g.GameNumber > game.GameNumber && g.TournamentId == game.TournamentId && g.Court == game.Court);
+
+        if (nextGame is null) {
+            return BadRequest(new ActionNotAllowed("Game does not have a next game"));
+        }
+
+        return new GetNextGameResponse {
+            NextGameId = nextGame.GameNumber
+        };
+    }
+
+    public class GetNextGameResponse {
+        public int NextGameId { get; set; }
     }
 }
 
