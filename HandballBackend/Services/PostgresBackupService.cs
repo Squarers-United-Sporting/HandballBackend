@@ -10,8 +10,8 @@ public interface IBackupService {
 }
 
 public class PostgresBackupService(HandballContext db) : IBackupService {
-    private Timer? _timer;
-    private bool _enabled = false;
+    private static Timer? _timer;
+    private static bool _enabled = false;
 
     public async Task MakeTimestampedBackup(string backupTitle = "auto", bool force = false) {
         if (!await HasDatabaseChanged() && !force) {
