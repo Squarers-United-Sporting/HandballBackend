@@ -58,7 +58,7 @@ public class SocketService(IOptions<JsonOptions> jsonOptions, IServiceProvider p
     }
 
     private async Task SocketSendEvent(WebSocket socket, GameEvent e) {
-        await SendAsync(socket, new {type = "event", Event = e.ToSendableData()});
+        await SendAsync(socket, new { type = "event", Event = e.ToSendableData() });
     }
 
     private async Task SocketSendUpdate(WebSocket socket, int gameId) {
@@ -70,7 +70,7 @@ public class SocketService(IOptions<JsonOptions> jsonOptions, IServiceProvider p
             .Include(g => g.Players)
             .ThenInclude(pgs => pgs.Player).Single(g => g.GameNumber == gameId);
         await SendAsync(socket,
-            new {type = "update", game = game.ToSendableData(true, true, formatData: true)});
+            new { type = "update", game = game.ToSendableData(true, true, formatData: true) });
     }
 
     public async Task SendGame(int gameId) {
