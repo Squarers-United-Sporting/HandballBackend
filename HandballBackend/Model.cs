@@ -22,7 +22,7 @@ public class HandballContext : DbContext {
     public DbSet<TournamentOfficial> TournamentOfficials { get; set; }
     public DbSet<TournamentTeam> TournamentTeams { get; set; }
 
-    public static string ConnectionString => File.ReadAllText(Config.SECRETS_FOLDER + "/DatabaseConnection.txt");
+    public static string ConnectionString => Environment.GetEnvironmentVariable("CONNECTION_STRING")!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder) {
         base.OnModelCreating(modelBuilder);

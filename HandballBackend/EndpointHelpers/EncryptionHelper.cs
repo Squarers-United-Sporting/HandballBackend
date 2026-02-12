@@ -6,9 +6,7 @@ namespace HandballBackend.EndpointHelpers;
 
 public class EncryptionHelper {
     private static byte[] Key() {
-        return Convert.FromBase64String(
-            File.ReadAllText(Config.SECRETS_FOLDER + "/PhoneNumberKey.txt")
-        );
+        return Convert.FromBase64String(Environment.GetEnvironmentVariable("ENCRYPTION_KEY")!);
     }
 
     public static string Encrypt(string plaintext) {

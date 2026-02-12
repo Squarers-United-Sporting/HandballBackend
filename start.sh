@@ -75,6 +75,9 @@ SUCCESS() {
     cd ./build || exit 1
     while true; do
             clear
+            set -o allexport
+            source ./prod.env
+            set +o allexport
             ./HandballBackend -l false -u -b -s
             EXIT_CODE=$?
     

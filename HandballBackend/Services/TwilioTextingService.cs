@@ -16,11 +16,11 @@ public interface ITextingService {
 
 public class TwilioTextingService(HandballContext db) : ITextingService {
     private string UserName() {
-        return File.ReadAllText(Config.SECRETS_FOLDER + "/TwilioAccount.txt");
+        return Environment.GetEnvironmentVariable("TWILIO_ACCOUNT")!;
     }
 
     private string Key() {
-        return File.ReadAllText(Config.SECRETS_FOLDER + "/TwilioKey.txt");
+        return Environment.GetEnvironmentVariable("TWILIO_KEY")!;
     }
 
     private bool _hasBeenSetup = false;
