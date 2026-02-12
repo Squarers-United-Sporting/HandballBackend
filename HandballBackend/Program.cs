@@ -1,4 +1,3 @@
-using System.Collections;
 using HandballBackend;
 using HandballBackend.Arguments;
 using HandballBackend.Authentication;
