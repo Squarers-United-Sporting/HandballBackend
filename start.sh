@@ -4,29 +4,50 @@ set -uo pipefail
 ulimit -n 100000
 
 errors=0
+debug=0
+env="./prod.env"
 echo "Starting the server!!"
 sleep 2
 
+
+helpFunction()
+{
+   echo ""
+   echo "Usage: $0 -d"
+   echo -e "\t-d Sets debug mode to true"
+   echo -e "\t-p <env> sets the environment variable to the path specified"
+   exit 1 # Exit script after printing help
+}
+
+while getopts "dp:" opt
+do
+   case "$opt" in
+      d ) debug=1 ;;
+      p ) env="$OPTARG" ;;
+      ? ) helpFunction ;; # Print helpFunction in case parameter is non-existent
+   esac
+done
 START() {
-    current_branch=$(git branch --show-current || echo "")
-    if [[ -z "$current_branch" ]]; then
-        echo "Not a git branch!"
-        ERROR
-        return
+    if [[ $debug -eq 0 ]]; then  
+        current_branch=$(git branch --show-current || echo "")
+        if [[ -z "$current_branch" ]]; then
+            echo "Not a git branch!"
+            ERROR
+            return
+        fi
+    
+        git stash
+        git checkout master
+        git pull
+    
+        cd ./build/resources || exit 1
+        git pull
+        git add .
+        git commit -m "Automatic Commit from Server Restart"
+        git push origin
+        cd ..
+        cd ..
     fi
-
-    git stash
-    git checkout master
-    git pull
-
-    cd ./build/resources || exit 1
-    git pull
-    git add .
-    git commit -m "Automatic Commit from Server Restart"
-    git push origin
-    cd ..
-    cd ..
-
     BUILD
 }
 
@@ -45,10 +66,10 @@ BUILD() {
         ERROR
         return
     fi
-
-    git checkout "$current_branch"
-    git stash pop || true
-
+    if [[ debug -eq 0 ]]; then
+        git checkout "$current_branch"
+        git stash pop || true
+    fi
     SUCCESS
 }
 
@@ -75,7 +96,14 @@ SUCCESS() {
     cd ./build || exit 1
     while true; do
             clear
-            ./HandballBackend -l false -u -b -s
+            set -o allexport
+            source "$env"
+            set +o allexport
+            if [[ debug -eq 1 ]]; then
+                ./HandballBackend -l false -s
+            else 
+                ./HandballBackend -l false -u -b -s
+            fi
             EXIT_CODE=$?
     
             case $EXIT_CODE in
