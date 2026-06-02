@@ -10,8 +10,7 @@ namespace HandballBackend;
 
 internal static class UtilityFunctions {
     public static void init() {
-        Config.RESOURCES_FOLDER =
-            @"G:\Programming\c#\HandballBackend\build\resources";
+        
     }
 
 

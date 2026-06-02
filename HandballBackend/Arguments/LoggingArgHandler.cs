@@ -4,9 +4,9 @@ public class LoggingArgHandler()
     : AbstractArgumentHandler("l", "logRequest", "Logs Requests that the server receives.") {
     protected override void ParseIfMatched(string[] args, ref int index, WebApplicationBuilder builder) {
         if (index < args.Length && ((string[]) ["true", "false"]).Contains(args[index])) {
-            Config.LOGGING = args[index++] == "true";
+            Environment.SetEnvironmentVariable("LOGGING", (args[index++] == "true").ToString());
         } else {
-            Config.LOGGING = true;
+            Environment.SetEnvironmentVariable("LOGGING", "true");
         }
     }
 }

@@ -1,7 +1,6 @@
-using HandballBackend.Events;
 using Microsoft.EntityFrameworkCore;
 
-namespace HandballBackend.EndpointHelpers;
+namespace HandballBackend.Services;
 
 public interface IBackupService {
     Task MakeTimestampedBackup(string backupTitle = "auto", bool force = false);
@@ -33,7 +32,7 @@ public class PostgresBackupService(HandballContext db) : IBackupService {
         var startInfo = new System.Diagnostics.ProcessStartInfo {
             WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden,
             FileName = "pg_dump",
-            Arguments = $"-U \"{connArgs["User ID"]}\" -h localhost -p 5432 {connArgs["Database"]}",
+            Arguments = $"-U \"{connArgs["User ID"]}\" -h {connArgs["Host"]} -p {connArgs.GetValueOrDefault("Port", "5432")} {connArgs["Database"]}",
             RedirectStandardOutput = true,
             UseShellExecute = false,
             CreateNoWindow = true,
@@ -55,7 +54,7 @@ public class PostgresBackupService(HandballContext db) : IBackupService {
         await process.WaitForExitAsync();
     }
 
-    private Dictionary<string, string> ParseConnectionString(string connectionString) {
+    private static Dictionary<string, string> ParseConnectionString(string connectionString) {
         var split = connectionString.Split(';');
         var dict = new Dictionary<string, string>();
         foreach (var s in split) {

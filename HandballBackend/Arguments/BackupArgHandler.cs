@@ -10,7 +10,6 @@ public class BackupArgHandler()
         if (index < args.Length && args[index].IsInt()) {
             backupTime = args[index++].AsInt();
         }
-        Config.BACKUP_TIME = backupTime;
-        // PostgresBackup.PeriodicBackups(backupTime);
+        Environment.SetEnvironmentVariable("BACKUP_TIME", backupTime.ToString());
     }
 }

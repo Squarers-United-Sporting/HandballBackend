@@ -20,6 +20,8 @@ public static class ImageHelper {
             smallImage.Write(Config.RESOURCES_FOLDER + $"/images/users/{searchableName}.png");
         }
 
+        _ = ServerManagementHelper.SaveResourcesToGit();
+
         return $"/api/people/image?name={searchableName}";
     }
 
@@ -32,6 +34,8 @@ public static class ImageHelper {
         using (var smallImage = AddCircleToImage(image, false)) {
             smallImage.Write(Config.RESOURCES_FOLDER + $"/images/teams/{searchableName}.png");
         }
+        
+        _ = ServerManagementHelper.SaveResourcesToGit();
 
         return $"/api/teams/image?name={searchableName}";
     }
@@ -46,6 +50,9 @@ public static class ImageHelper {
             image.Write(Config.RESOURCES_FOLDER + $"/images/teams/{searchableName}.png");
         }
 
+        _ = ServerManagementHelper.SaveResourcesToGit();
+
+        
         return $"/api/teams/image?name={searchableName}";
     }
 
@@ -60,6 +67,9 @@ public static class ImageHelper {
             image.Write(Config.RESOURCES_FOLDER + $"/images/tournaments/{searchableName}.png");
         }
 
+        _ = ServerManagementHelper.SaveResourcesToGit();
+
+        
         return $"/api/tournaments/image?name={searchableName}";
     }
 

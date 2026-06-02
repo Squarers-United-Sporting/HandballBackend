@@ -8,6 +8,7 @@ using HandballBackend.EndpointHelpers.GameManagement;
 using HandballBackend.ErrorTypes;
 using HandballBackend.Events;
 using HandballBackend.FixtureGenerator;
+using HandballBackend.Services;
 using HandballBackend.Utils;
 using Microsoft.AspNetCore.Authentication;
 
@@ -46,9 +47,9 @@ builder.Services.AddScoped<IEventPublisher, EventPublisher>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpLogging(o => { });
 builder.Services.AddAuthentication(options => {
-    options.DefaultAuthenticateScheme = "TokenAuthentication";
-    options.DefaultChallengeScheme = "TokenAuthentication";
-})
+        options.DefaultAuthenticateScheme = "TokenAuthentication";
+        options.DefaultChallengeScheme = "TokenAuthentication";
+    })
     .AddScheme<AuthenticationSchemeOptions, TokenAuthenticator>(
         "TokenAuthentication", null);
 
@@ -73,6 +74,10 @@ using (var serviceScope = app.Services.CreateScope()) {
     if (Config.BACKUP_TIME > 0) {
         var postgres = services.GetRequiredService<IBackupService>();
         postgres.PeriodicBackups();
+    }
+
+    if (Config.GIT_CHECK_TIME > 0) {
+        ServerManagementHelper.StartCheckingForUpdates(Config.GIT_CHECK_TIME);
     }
 }
 

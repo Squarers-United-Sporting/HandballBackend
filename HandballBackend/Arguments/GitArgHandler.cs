@@ -12,7 +12,6 @@ public class GitArgHandler() : AbstractArgumentHandler("u", "update", "Automatic
             }
         }
 
-        Config.CHECKING_GIT = true;
-        ServerManagementHelper.StartCheckingForUpdates(frequency);
+        Environment.SetEnvironmentVariable("GIT_CHECK_TIME", frequency.ToString());
     }
 }
