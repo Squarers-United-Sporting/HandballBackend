@@ -12,10 +12,11 @@ public static class ServerManagementHelper {
 
     private static async Task CheckForProjectUpdates() {
         await RunGitCommand("fetch --all");
-        var localHash = await RunGitCommand("rev-parse master");
-        var newHash = await RunGitCommand("rev-parse origin/master");
+        var localHash = Config.GIT_REVISION;
+        var (_, newHash) =
+            await RunGitCommand("rev-parse --git-path https://github.com/jh1236/handball-resources master");
 
-        if (localHash == newHash) return;
+        if (localHash == null || localHash == newHash) return;
         Console.WriteLine("Updates on master found; restarting ");
         UpdateServer();
     }
@@ -56,9 +57,10 @@ public static class ServerManagementHelper {
 
         process.Start();
         var output = await process.StandardOutput.ReadToEndAsync();
+        var error = await process.StandardError.ReadToEndAsync();
         await process.WaitForExitAsync();
-        if (process.ExitCode != 0) {
-            throw new Exception($"Git returned Code {process.ExitCode}:  {output}");
+        if (process.ExitCode != 0 || error.Contains("fatal")) {
+            throw new Exception($"Git returned Code {process.ExitCode}:  {error}");
         }
 
         return new Tuple<int, string>(process.ExitCode, output.Trim());
@@ -73,18 +75,17 @@ public static class ServerManagementHelper {
 
         await RunGitCommand("add -A", Config.RESOURCES_FOLDER);
         await RunGitCommand("commit -m \"Automatic Commit from Server\"", Config.RESOURCES_FOLDER);
+        var authenticatedUrl = Config.RESOURCES_REPOSITORY.Replace("https://", $"https://{Config.GITHUB_TOKEN}@");
+        await RunGitCommand($"push {authenticatedUrl}", Config.RESOURCES_FOLDER);
     }
 
 
     public static async Task InitResources() {
-        Console.WriteLine("Initializing resources");
-
         if (Directory.Exists(Config.RESOURCES_FOLDER + "/.git")) {
             Console.WriteLine("Resources already exist; aborting");
             return;
         }
 
-        Console.WriteLine("Cloning from git");
         await RunGitCommand($"clone {Config.RESOURCES_REPOSITORY} {Config.RESOURCES_FOLDER}");
     }
 

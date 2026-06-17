@@ -4,6 +4,9 @@ WORKDIR /app
 EXPOSE 8080
 USER root
 RUN apk --no-cache add git
+RUN mkdir /resources
+RUN chown $APP_UID /resources
+ENV RESOURCES_DIRECTORY=/resources
 USER $APP_UID
 
 FROM mcr.microsoft.com/dotnet/sdk:9.0-alpine AS build

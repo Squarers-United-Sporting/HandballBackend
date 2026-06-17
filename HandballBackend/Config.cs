@@ -11,4 +11,6 @@ public static class Config {
     public const int TimeoutTime = 30;
     public static string MY_ADDRESS => Environment.GetEnvironmentVariable("SERVER_ADDRESS") ?? "https://api.squarers.club" ;
     public static bool LOGGING => Environment.GetEnvironmentVariable("LOGGING") == "true";
+    public static string? GIT_REVISION  => Environment.GetEnvironmentVariable("GIT_REVISION");
+    public static string? GITHUB_TOKEN  => Environment.GetEnvironmentVariable("GITHUB_TOKEN");
 }

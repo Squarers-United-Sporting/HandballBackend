@@ -83,7 +83,7 @@ public class TestController(IBackupService backup, IEventPublisher eventPublishe
             Log = await ExceptionLoggingHelper.Read()
         };
     }
-
+ 
 
     [HttpPost("log/clear")]
     [ProducesResponseType(StatusCodes.Status200OK)]

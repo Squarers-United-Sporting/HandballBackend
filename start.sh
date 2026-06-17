@@ -5,6 +5,7 @@ ulimit -n 100000
 
 errors=0
 build=1
+revision=""
 debug=1
 echo "Starting the server!!"
 sleep 2
@@ -22,13 +23,8 @@ START() {
         git checkout master
         git pull
     fi
-    cd ./build/resources || exit 1
-    git pull
-    git add .
-    git commit -m "Automatic Commit from Server Restart"
-    git push origin
-    cd ..
-    cd ..
+    revision=$(git rev-parse master)
+    SUCCESS
 }
 
 ERROR() {
@@ -52,14 +48,15 @@ ERROR() {
 SUCCESS() {
     errors=0
     while true; do
+            export GIT_REVISION="$revision"
             clear
             if [[ build -eq 1 ]]; then
-                docker compose up --build --exit-code-from
+                docker compose up --build --exit-code-from handball-backend
             else 
-                docker compose up --build --exit-code-from
+                docker compose up --build --exit-code-from handball-backend
             fi
-            build=0
             EXIT_CODE=$?
+            build=0
     
             case $EXIT_CODE in
                 0) echo "Server exited normally." ; exit 0 ;;
