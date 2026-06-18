@@ -1,0 +1,26 @@
+﻿services:
+    handball-backend:
+        image: handball-backend
+        container_name: handball-backend-container
+        build:
+            context: ./HandballBackend
+            dockerfile: Dockerfile
+        env_file: prod.env
+        environment:
+            - BACKUP_TIME=168
+            - GIT_CHECK_TIME=3600
+            - SERVER_ADDRESS=https://api.squarers.club
+            - BACKUP_DIRECTORY=/backup
+            - RESOURCES_DIRECTORY=/resources
+            - RESOURCES_REPOSITORY=https://github.com/squarers-united-sporting/handball-resources
+            - LOGGING=true
+            - GIT_REVISION=${GIT_REVISION}
+        ports:
+            - "5001:8080"
+        volumes:
+            - resources:/resources
+            - backup:/backup
+
+volumes:
+    resources:
+    backup:

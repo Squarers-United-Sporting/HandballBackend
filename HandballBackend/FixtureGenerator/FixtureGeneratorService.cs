@@ -2,6 +2,7 @@ using HandballBackend.Database.Models;
 using HandballBackend.EndpointHelpers;
 using HandballBackend.EndpointHelpers.GameManagement;
 using HandballBackend.Events;
+using HandballBackend.Services;
 
 namespace HandballBackend.FixtureGenerator;
 

@@ -4,6 +4,7 @@
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+        <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     </PropertyGroup>
     <ItemGroup>
         <PackageReference Include="BCrypt.Net-Next" Version="4.0.3"/>
@@ -25,5 +26,10 @@
         <PackageReference Include="Twilio" Version="7.10.0"/>
         <PackageReference Include="Twilio.AspNet.Core" Version="8.1.1"/>
         <PackageReference Include="Twilio.AspNet.Mvc" Version="8.1.1"/>
+    </ItemGroup>
+    <ItemGroup>
+      <Content Include="..\.dockerignore">
+        <Link>.dockerignore</Link>
+      </Content>
     </ItemGroup>
 </Project>

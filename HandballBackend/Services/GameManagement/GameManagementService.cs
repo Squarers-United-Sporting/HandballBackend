@@ -3,6 +3,7 @@ using HandballBackend.Database;
 using HandballBackend.Database.Models;
 using HandballBackend.Events;
 using HandballBackend.FixtureGenerator;
+using HandballBackend.Services;
 using HandballBackend.Utils;
 using Microsoft.EntityFrameworkCore;
 

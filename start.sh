@@ -4,72 +4,26 @@ set -uo pipefail
 ulimit -n 100000
 
 errors=0
-debug=0
-env="./prod.env"
+build=1
+revision=""
+debug=1
 echo "Starting the server!!"
 sleep 2
 
 
-helpFunction()
-{
-   echo ""
-   echo "Usage: $0 -d"
-   echo -e "\t-d Sets debug mode to true"
-   echo -e "\t-p <env> sets the environment variable to the path specified"
-   exit 1 # Exit script after printing help
-}
-
-while getopts "dp:" opt
-do
-   case "$opt" in
-      d ) debug=1 ;;
-      p ) env="$OPTARG" ;;
-      ? ) helpFunction ;; # Print helpFunction in case parameter is non-existent
-   esac
-done
 START() {
-    if [[ $debug -eq 0 ]]; then  
-        current_branch=$(git branch --show-current || echo "")
-        if [[ -z "$current_branch" ]]; then
-            echo "Not a git branch!"
-            ERROR
-            return
-        fi
-    
+    current_branch=$(git branch --show-current || echo "")
+    if [[ -z "$current_branch" ]]; then
+        echo "Not a git branch!"
+        ERROR
+        return
+    fi
+    if [[ $debug -eq 0 ]]; then
         git stash
         git checkout master
         git pull
-    
-        cd ./build/resources || exit 1
-        git pull
-        git add .
-        git commit -m "Automatic Commit from Server Restart"
-        git push origin
-        cd ..
-        cd ..
     fi
-    BUILD
-}
-
-BUILD() {
-    if ! dotnet clean ./HandballBackend/HandballBackend.csproj -c Release; then
-        ERROR
-        return
-    fi
-
-    if ! dotnet publish ./HandballBackend/HandballBackend.csproj -c Release \
-        --runtime linux-x64 \
-        --self-contained true \
-        /p:PublishSingleFile=true \
-        --framework net9.0 \
-        --output ./build; then
-        ERROR
-        return
-    fi
-    if [[ debug -eq 0 ]]; then
-        git checkout "$current_branch"
-        git stash pop || true
-    fi
+    revision=$(git rev-parse master)
     SUCCESS
 }
 
@@ -85,7 +39,7 @@ ERROR() {
         echo "There was an error building/downloading the branch! Waiting 5 minutes and trying again"
         sleep 300
     else
-        echo "The file has failed to start $errors times! Exiting"
+        echo "The server has failed to start $errors times! Exiting"
         exit 1
     fi
     START
@@ -93,25 +47,23 @@ ERROR() {
 
 SUCCESS() {
     errors=0
-    cd ./build || exit 1
     while true; do
+            export GIT_REVISION="$revision"
             clear
-            set -o allexport
-            source "$env"
-            set +o allexport
-            if [[ debug -eq 1 ]]; then
-                ./HandballBackend -l false -s
+            if [[ build -eq 1 ]]; then
+                docker compose up --build --exit-code-from handball-backend
             else 
-                ./HandballBackend -l false -u -b -s
+                docker compose up --exit-code-from handball-backend
             fi
             EXIT_CODE=$?
+            build=0
     
             case $EXIT_CODE in
                 0) echo "Server exited normally." ; exit 0 ;;
                 1) echo "A server restart was requested!" ; sleep 1 ;;
-                2) echo "A server rebuild was requested!" ; sleep 1 ; cd .. ; BUILD ; return ;;
-                3) echo "A server git update was requested!" ; sleep 1 ; cd .. ; START ; return ;;
-                *) echo "Server exited with code $EXIT_CODE" ; exit $EXIT_CODE ;;
+                2) echo "A server rebuild was requested!" ; sleep 1 ; build=1 ;;
+                3) echo "A server git update was requested!" ; sleep 1 ; START ;;
+                *) echo "Server exited with code $EXIT_CODE" ; ERROR ;;
             esac
         done
 }

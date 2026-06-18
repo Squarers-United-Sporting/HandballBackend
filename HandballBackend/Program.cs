@@ -8,6 +8,7 @@ using HandballBackend.EndpointHelpers.GameManagement;
 using HandballBackend.ErrorTypes;
 using HandballBackend.Events;
 using HandballBackend.FixtureGenerator;
+using HandballBackend.Services;
 using HandballBackend.Utils;
 using Microsoft.AspNetCore.Authentication;
 
@@ -73,6 +74,10 @@ using (var serviceScope = app.Services.CreateScope()) {
     if (Config.BACKUP_TIME > 0) {
         var postgres = services.GetRequiredService<IBackupService>();
         postgres.PeriodicBackups();
+    }
+
+    if (Config.GIT_CHECK_TIME > 0) {
+        ServerManagementHelper.StartCheckingForUpdates(Config.GIT_CHECK_TIME);
     }
 }
 

@@ -1,7 +1,9 @@
+using System.Reflection;
 using HandballBackend.Authentication;
 using HandballBackend.EndpointHelpers;
 using HandballBackend.ErrorTypes;
 using HandballBackend.Events;
+using HandballBackend.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -21,7 +23,7 @@ public class TestController(IBackupService backup, IEventPublisher eventPublishe
     [HttpPost("update")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public ActionResult UpdateFromGit() {
-        if (!Config.CHECKING_GIT) {
+        if (Config.GIT_CHECK_TIME < 0) {
             return UnprocessableEntity(new ActionNotAllowed("The server does not have updating enabled"));
         }
 
@@ -35,7 +37,7 @@ public class TestController(IBackupService backup, IEventPublisher eventPublishe
     [HttpPost("restart")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public ActionResult RestartServer() {
-        if (!Config.CHECKING_GIT) {
+        if (Config.GIT_CHECK_TIME < 0) {
             return UnprocessableEntity(new ActionNotAllowed("The server does not have updating enabled"));
         }
 
@@ -49,7 +51,7 @@ public class TestController(IBackupService backup, IEventPublisher eventPublishe
     [HttpPost("rebuild")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public ActionResult RebuildServer() {
-        if (!Config.CHECKING_GIT) {
+        if (Config.GIT_CHECK_TIME < 0) {
             return UnprocessableEntity(new ActionNotAllowed("The server does not have updating enabled"));
         }
 
@@ -81,6 +83,7 @@ public class TestController(IBackupService backup, IEventPublisher eventPublishe
             Log = await ExceptionLoggingHelper.Read()
         };
     }
+
 
     [HttpPost("log/clear")]
     [ProducesResponseType(StatusCodes.Status200OK)]
