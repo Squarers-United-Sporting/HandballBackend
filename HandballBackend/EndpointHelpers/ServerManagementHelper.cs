@@ -14,7 +14,7 @@ public static class ServerManagementHelper {
         await RunGitCommand("fetch --all");
         var localHash = Config.GIT_REVISION;
         var (_, newHash) =
-            await RunGitCommand("rev-parse --git-path https://github.com/jh1236/handball-resources master");
+            await RunGitCommand($"rev-parse --git-path ${Config.RESOURCES_REPOSITORY}");
 
         if (localHash == null || localHash == newHash) return;
         Console.WriteLine("Updates on master found; restarting ");
@@ -82,7 +82,6 @@ public static class ServerManagementHelper {
 
     public static async Task InitResources() {
         if (Directory.Exists(Config.RESOURCES_FOLDER + "/.git")) {
-            Console.WriteLine("Resources already exist; aborting");
             return;
         }
 

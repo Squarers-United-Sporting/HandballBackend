@@ -1,32 +1,21 @@
 @echo off
 set /A errors=0
+set /A debug=1
 echo Starting the server!!
 timeout /t 2
+
 :START
 set current_branch=
 for /F "delims=" %%n in ('git branch --show-current') do set "current_branch=%%n"
 if "%current_branch%"=="" echo Not a git branch! && goto :ERROR
+if "%debug%"=="1" goto DEBUG
 git stash
 git checkout master
 git pull
-cd .\build.\resources
-git pull
-git add .
-git commit -m "Automatic Commit from Server Restart"
-git push origin
-:BUILD
-dotnet clean .\HandballBackend\HandballBackend.csproj -c Release
-if %ERRORLEVEL% neq 0 goto :ERROR
-dotnet publish .\HandballBackend\HandballBackend.csproj -c Release ^
-  --runtime win-x64 ^
-  --self-contained true ^
-  /p:PublishSingleFile=true ^
-  --framework net9.0 ^
-  --output G:\Programming\c#\HandballBackend\build
-if %ERRORLEVEL% neq 0 goto :ERROR
-git checkout %current_branch%
-git stash pop
-goto :SUCCESS
+:DEBUG
+set GIT_REVISION=
+for /F "delims=" %%n in ('git rev-parse master') do set "GIT_REVISION=%%n"
+goto SUCCESS
 
 
 :ERROR
@@ -40,12 +29,8 @@ goto :START
 :SUCCESS
 SET /A errors=0
 cls
-mkdir .\build\resources
-xcopy .\HandballBackend\resources .\build\resources
-cd .\build
-.\HandballBackend.exe -l false -u -b -s
+docker compose up --build --exit-code-from handball-backend
 SET /A EXIT_CODE=%ERRORLEVEL%
-cd ..
 if %EXIT_CODE%==0 goto :EOF
 if %EXIT_CODE%==1 echo A server restart was requested! && timeout 1 && goto :SUCCESS
 if %EXIT_CODE%==2 echo A server rebuilds was requested! && timeout 1 && goto :BUILD

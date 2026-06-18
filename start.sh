@@ -53,7 +53,7 @@ SUCCESS() {
             if [[ build -eq 1 ]]; then
                 docker compose up --build --exit-code-from handball-backend
             else 
-                docker compose up --build --exit-code-from handball-backend
+                docker compose up --exit-code-from handball-backend
             fi
             EXIT_CODE=$?
             build=0
