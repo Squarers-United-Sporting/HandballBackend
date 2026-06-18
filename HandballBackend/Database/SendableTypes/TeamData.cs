@@ -110,7 +110,7 @@ public class TeamData {
                     pgs.Game.TeamOneId == team.Id
                         ? pgs.Game.TeamOneTimeouts
                         : pgs.Game.TeamTwoTimeouts;
-                Stats["Points Against"] =
+                Stats["Points Against"] +=
                     pgs.Game.TeamOneId == team.Id ? pgs.Game.TeamTwoScore : pgs.Game.TeamOneScore;
             }
 
