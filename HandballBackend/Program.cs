@@ -47,9 +47,9 @@ builder.Services.AddScoped<IEventPublisher, EventPublisher>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpLogging(o => { });
 builder.Services.AddAuthentication(options => {
-        options.DefaultAuthenticateScheme = "TokenAuthentication";
-        options.DefaultChallengeScheme = "TokenAuthentication";
-    })
+    options.DefaultAuthenticateScheme = "TokenAuthentication";
+    options.DefaultChallengeScheme = "TokenAuthentication";
+})
     .AddScheme<AuthenticationSchemeOptions, TokenAuthenticator>(
         "TokenAuthentication", null);
 

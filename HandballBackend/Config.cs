@@ -9,8 +9,8 @@ public static class Config {
     public static string RESOURCES_FOLDER => Environment.GetEnvironmentVariable("RESOURCES_DIRECTORY") ?? "./resources";
     public static string RESOURCES_REPOSITORY => Environment.GetEnvironmentVariable("RESOURCES_REPOSITORY") ?? "https://github.com/jh1236/handball-resources";
     public const int TimeoutTime = 30;
-    public static string MY_ADDRESS => Environment.GetEnvironmentVariable("SERVER_ADDRESS") ?? "https://api.squarers.club" ;
+    public static string MY_ADDRESS => Environment.GetEnvironmentVariable("SERVER_ADDRESS") ?? "https://api.squarers.club";
     public static bool LOGGING => Environment.GetEnvironmentVariable("LOGGING") == "true";
-    public static string? GIT_REVISION  => Environment.GetEnvironmentVariable("GIT_REVISION");
-    public static string? GITHUB_TOKEN  => Environment.GetEnvironmentVariable("GITHUB_TOKEN");
+    public static string? GIT_REVISION => Environment.GetEnvironmentVariable("GIT_REVISION");
+    public static string? GITHUB_TOKEN => Environment.GetEnvironmentVariable("GITHUB_TOKEN");
 }

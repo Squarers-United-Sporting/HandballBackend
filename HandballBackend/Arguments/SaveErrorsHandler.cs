@@ -15,6 +15,6 @@ public class SaveErrorsHandler()
         if (!output) return;
 
         builder.Services.AddProblemDetails();
-        Environment.SetEnvironmentVariable("SAVE_ERRORS","true");
+        Environment.SetEnvironmentVariable("SAVE_ERRORS", "true");
     }
 }

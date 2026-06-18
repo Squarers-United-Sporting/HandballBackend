@@ -10,7 +10,7 @@ namespace HandballBackend;
 
 internal static class UtilityFunctions {
     public static void init() {
-        
+
     }
 
 

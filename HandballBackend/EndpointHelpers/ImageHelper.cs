@@ -34,7 +34,7 @@ public static class ImageHelper {
         using (var smallImage = AddCircleToImage(image, false)) {
             smallImage.Write(Config.RESOURCES_FOLDER + $"/images/teams/{searchableName}.png");
         }
-        
+
         _ = ServerManagementHelper.SaveResourcesToGit();
 
         return $"/api/teams/image?name={searchableName}";
@@ -52,7 +52,7 @@ public static class ImageHelper {
 
         _ = ServerManagementHelper.SaveResourcesToGit();
 
-        
+
         return $"/api/teams/image?name={searchableName}";
     }
 
@@ -69,7 +69,7 @@ public static class ImageHelper {
 
         _ = ServerManagementHelper.SaveResourcesToGit();
 
-        
+
         return $"/api/tournaments/image?name={searchableName}";
     }
 
